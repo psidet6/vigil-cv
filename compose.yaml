@@ -1,0 +1,25 @@
+name: vigil-cv
+
+x-app-common: &app-common
+  image: vigil-cv:centos-stream10
+  pull_policy: never
+  env_file:
+    - ${APP_ENV_FILE:-.env}
+  volumes:
+    - ./data:/data
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app-common
+    container_name: vigil-cv-web
+    command: /usr/local/bin/python app.py
+    ports:
+      - "${HOST_PORT:-5001}:5001"
+
+  worker:
+    <<: *app-common
+    container_name: vigil-cv-worker
+    command: /usr/local/bin/python worker.py
+    depends_on:
+      - web

@@ -1,0 +1,138 @@
+<div id="tabUpload" class="hidden">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+  <!-- Left Column -->
+  <div class="xl:col-span-8 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+      <h3 class="font-headline-md text-headline-md text-on-surface mb-md">上传现场素材</h3>
+      <p class="font-body-md text-on-surface-variant mb-md">支持图片包和视频素材，适合对业务人员现场采集内容做快速研判。</p>
+      
+      <form id="uploadForm" onsubmit="return startUploadJob(event)" class="space-y-md">
+        <div class="space-y-base">
+          <label id="uploadDropZone" for="uploadFile" class="group flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-outline-variant bg-surface-container-low px-6 py-10 text-center transition hover:border-primary">
+            <span class="material-symbols-outlined text-4xl text-outline-variant group-hover:text-primary transition-colors">cloud_upload</span>
+            <span class="mt-4 font-label-sm text-sm text-on-surface group-hover:text-primary">点击选择文件，或将文件拖放至此</span>
+            <span class="mt-1 text-xs text-on-surface-variant">.zip 图片包 · .mp4 / .avi / .mov / .mpg 视频</span>
+            <input id="uploadFile" name="file" type="file" accept=".zip,.mp4,.avi,.mov,.mkv,.mpg,.mpeg" class="hidden" onchange="onUploadFileChange(this)" />
+          </label>
+          <div id="uploadFileInfo" class="hidden mt-4 flex items-center gap-3 bg-surface-variant p-3 rounded-xl border border-outline-variant">
+            <span class="material-symbols-outlined text-primary">description</span>
+            <div class="min-w-0 flex-1">
+              <div id="uploadFileName" class="truncate text-sm font-bold text-on-surface"></div>
+              <div id="uploadFileSize" class="text-xs text-on-surface-variant"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-sm mt-4 border-t border-outline-variant">
+            <h4 class="font-label-sm text-on-surface mb-4">研判模型与参数</h4>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+                <div class="space-y-base">
+                    <label class="font-label-sm text-label-sm text-on-surface block">模型选择</label>
+                    <select id="uploadModelKey" name="model_key" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+                        <option value="general">通用（general）</option>
+                        <option value="special">专项场景（special）</option>
+                    </select>
+                </div>
+                <div class="space-y-base lg:col-span-2">
+                    <label for="uploadClasses" id="uploadClassesLabel" class="font-label-sm text-label-sm text-on-surface block">检测提示词</label>
+                    <input type="text" id="uploadClasses" name="classes" value="" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+                    <p id="uploadClassesHelp" class="mt-1 text-xs text-on-surface-variant"></p>
+                    <div id="uploadPresetPanel" class="hidden bg-surface-container-low p-4 rounded-lg mt-2">
+                        <div class="text-xs font-semibold uppercase text-primary">常用预设</div>
+                        <div id="uploadPresetButtons" class="mt-2 flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mt-4">
+            <div class="space-y-base">
+                <div class="flex justify-between items-center">
+                    <label class="font-label-sm text-label-sm text-on-surface block">置信度: <span id="uploadConfValue">0.10</span></label>
+                </div>
+                <input type="range" id="uploadConfRange" name="conf" min="0" max="1" step="0.01" value="0.10" class="w-full accent-primary" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-base">
+                    <label class="font-label-sm text-label-sm text-on-surface block">批大小</label>
+                    <input type="number" name="batch_size" value="8" min="1" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+                </div>
+                <div id="frameIntervalRow" class="space-y-base">
+                    <label class="font-label-sm text-label-sm text-on-surface block">帧采样间隔</label>
+                    <input type="number" name="frame_interval" value="5" min="1" max="60" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-sm mt-4 border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p class="text-xs text-on-surface-variant max-w-md">系统会自动筛出命中片段，并把结果图送入后续身份核验和训练样本沉淀流程。</p>
+            <button type="submit" class="bg-primary text-on-primary font-label-sm px-8 py-3 rounded-lg hover:bg-surface-tint transition-colors w-full md:w-auto">开始素材研判</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Upload Progress and Results -->
+    <section class="space-y-6">
+        <div id="uploadProgressBox" class="hidden bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-headline-md text-headline-md text-on-surface">检测进度</h3>
+                <span id="uploadProgressStatus" class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs">运行中</span>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div id="uploadProgressText" class="font-label-sm text-sm text-on-surface">已处理 0 / 0</div>
+                <div id="uploadProgressSubtext" class="text-xs text-on-surface-variant mt-1">保留 0</div>
+                <div class="mt-3 w-full bg-surface-variant h-2 rounded-full overflow-hidden">
+                    <div id="uploadProgressBar" class="h-full w-0 bg-primary transition-all"></div>
+                </div>
+            </div>
+            <div id="uploadDownloadLinks" class="mt-4 hidden flex gap-3">
+                <a id="uploadZipLink" href="#" target="_blank" class="bg-primary text-on-primary font-label-sm px-4 py-2 rounded-lg hover:bg-surface-tint transition-colors w-full text-center">下载研判结果包</a>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="button" onclick="cancelUploadJob()" class="text-xs text-error hover:text-red-700">停止任务</button>
+            </div>
+        </div>
+
+        <div id="uploadResultPanel" class="hidden bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-headline-md text-headline-md text-on-surface">结果图身份识别</h3>
+            <div class="flex gap-2">
+                <button type="button" onclick="toggleAllResults('upload', true)" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">全选</button>
+                <button type="button" onclick="toggleAllResults('upload', false)" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">清空</button>
+                <button id="uploadAddDatasetBtn" type="button" onclick="openResultImportModal('upload')" class="bg-surface-variant text-primary px-3 py-1 rounded-lg text-sm border border-primary">加入数据集</button>
+                <button id="uploadIdentifySelectedBtn" type="button" onclick="identifySelectedResults('upload')" class="bg-primary text-on-primary px-3 py-1 rounded-lg text-sm">识别身份</button>
+            </div>
+          </div>
+          <div id="uploadResultSummary" class="text-sm text-on-surface-variant mb-4">暂无结果图</div>
+          <div class="flex gap-2 text-xs mb-4">
+            <span id="uploadLibraryStatus"></span>
+            <span id="uploadLibraryTask" class="text-primary"></span>
+          </div>
+          <div id="uploadResultGrid" class="grid sm:grid-cols-2 gap-4"></div>
+        </div>
+    </section>
+  </div>
+  
+  <!-- Right Column (办理提示s) -->
+  <div class="xl:col-span-4 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+      <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-2">办理提示</div>
+      <h3 class="font-headline-md text-headline-md text-on-surface mb-4">办理提示</h3>
+      <div class="space-y-4 text-sm text-on-surface-variant">
+        <div class="bg-surface-container-low p-4 rounded-xl">
+            <strong class="text-on-surface block mb-1">图片素材包</strong>
+            将 JPG / PNG / BMP / TIFF 图片打包上传，系统会自动筛出命中结果并生成研判结果包。
+        </div>
+        <div class="bg-surface-container-low p-4 rounded-xl">
+            <strong class="text-on-surface block mb-1">视频素材</strong>
+            支持 MP4 / AVI / MOV / MKV / MPG。系统会按帧抽样研判，命中帧会自动沉淀为结果图。
+        </div>
+        <div class="bg-surface-variant border border-outline-variant p-4 rounded-xl text-on-surface">
+            <strong class="text-primary block mb-1">注意事项</strong>
+            单文件最大 500 MB；若要继续做身份核验或模型训练，建议保留清晰、正向、目标较大的命中图片。
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>

@@ -1,0 +1,180 @@
+<div id="tabTrain" class="hidden">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+  <div class="xl:col-span-7 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">训练流程</div>
+        <h2 class="font-headline-md text-headline-md text-on-surface">样本沉淀与数据集管理</h2>
+        <p class="font-body-md text-on-surface-variant mt-2 text-sm mb-8">围绕基层实战场景，把结果图回流、样本整理、人工复核、预标注和训练任务串成一条闭环，减少重复拷贝和离线整理。</p>
+
+        <form id="trainDatasetForm" onsubmit="return createTrainDataset(event)" class="space-y-4 pt-6 border-t border-outline-variant">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-base">
+                    <label class="font-label-sm text-on-surface block">数据集名称</label>
+                    <input id="trainDatasetName" type="text" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="未戴头盔专项样本_0327" />
+                </div>
+                <div class="space-y-base">
+                    <label class="font-label-sm text-on-surface block">类别列表</label>
+                    <input id="trainDatasetClasses" type="text" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="target_a,target_b,target_c" />
+                </div>
+            </div>
+            <div class="space-y-base">
+                <label class="font-label-sm text-on-surface block">备注</label>
+                <textarea id="trainDatasetNotes" rows="2" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="填写用途、来源说明或当前复核范围。"></textarea>
+            </div>
+            <div id="trainDatasetFeedback" class="hidden text-sm text-error"></div>
+            <div class="flex justify-between items-center pt-4">
+                <div class="text-xs text-on-surface-variant">创建后会自动生成本地数据集目录 (images, labels, splits, exports)</div>
+                <button id="trainDatasetSubmit" type="submit" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint">创建数据集</button>
+            </div>
+        </form>
+
+        <div class="mt-8 pt-8 border-t border-outline-variant">
+            <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">ZIP 导入</div>
+            <h3 class="font-headline-md text-headline-md text-on-surface mb-2">批量导入图片</h3>
+            <p class="font-body-md text-on-surface-variant text-sm mb-6">选择已有数据集后，上传一个包含图片的 ZIP 包。系统会自动解压有效图片到 images 目录，并记录图片元数据用于后续标注和训练。</p>
+            
+            <form id="trainImportForm" onsubmit="return importTrainZip(event)" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-base">
+                        <label class="font-label-sm text-on-surface block">目标数据集</label>
+                        <select id="trainImportDataset" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+                            <option value="">请先创建数据集</option>
+                        </select>
+                    </div>
+                    <div class="space-y-base">
+                        <label class="font-label-sm text-on-surface block">ZIP 文件</label>
+                        <input id="trainImportFile" type="file" accept=".zip,application/zip" class="block w-full text-sm text-on-surface file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-surface-variant file:text-on-surface-variant hover:file:bg-outline-variant cursor-pointer disabled:opacity-50" disabled />
+                    </div>
+                </div>
+                <div class="bg-surface-container-low p-4 rounded-xl text-xs text-on-surface-variant">支持 ZIP 内包含 jpg / jpeg / png / bmp / tif / tiff / webp 图片。非图片文件会自动跳过。</div>
+                <div id="trainImportFeedback" class="hidden text-sm text-error"></div>
+                <div class="flex justify-between items-center pt-4">
+                    <div class="text-xs text-on-surface-variant">第一阶段只做图片归档和元数据入库。</div>
+                    <button id="trainImportSubmit" type="submit" disabled class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint disabled:opacity-50">导入 ZIP</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="mt-8 pt-8 border-t border-outline-variant">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">数据集列表</div>
+                    <h3 class="font-headline-md text-headline-md text-on-surface">现有数据集</h3>
+                </div>
+                <button type="button" onclick="refreshTrainTab()" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">刷新</button>
+            </div>
+            <div id="trainDatasetList" class="space-y-4">
+                <div class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant text-center">正在加载数据集...</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">数据集状态</div>
+        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">工作区概览</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">数据集</div>
+                <div id="trainMetricDatasets" class="text-2xl font-bold text-on-surface mt-1">0</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">图片数</div>
+                <div id="trainMetricImages" class="text-2xl font-bold text-on-surface mt-1">0</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">已标注</div>
+                <div id="trainMetricLabeled" class="text-2xl font-bold text-primary mt-1">0</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">已复核</div>
+                <div id="trainMetricReviewed" class="text-2xl font-bold text-on-surface-variant mt-1">0</div>
+            </div>
+        </div>
+    </section>
+  </div>
+
+  <div class="xl:col-span-5 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">发起训练任务</div>
+        <h3 class="font-headline-md text-headline-md text-on-surface">发起训练任务</h3>
+        <p class="font-body-md text-on-surface-variant mt-2 text-sm mb-6">系统会自动准备训练清单、目录和日志，并启动训练。可勾选“仅使用已确认样本”。</p>
+
+        <form id="trainRunForm" onsubmit="return createTrainJob(event)" class="space-y-4">
+            <div class="space-y-base">
+                <label class="font-label-sm text-on-surface block">训练数据集</label>
+                <select id="trainRunDataset" disabled class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+                    <option value="">请先创建数据集</option>
+                </select>
+            </div>
+            <div class="space-y-base">
+                <label class="font-label-sm text-on-surface block">基础模型</label>
+                <select id="trainBaseModel" disabled class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+                    <option value="">未发现可用训练底模</option>
+                </select>
+            </div>
+
+            <div class="space-y-base">
+                <label class="font-label-sm text-on-surface block">训练预设</label>
+                <select id="trainPresetSelect" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+                    <option value="quick">快速验证 · 640 / 30 轮</option>
+                    <option value="standard">标准训练 · 640 / 80 轮</option>
+                    <option value="lowmem">低算力模式 · 512 / 50 轮</option>
+                </select>
+                <div class="bg-surface-container-low p-3 rounded-xl mt-2 text-xs text-on-surface-variant" id="trainPresetHint">适合快速验证数据集流程，默认使用较小模型和较短轮数。</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div class="space-y-base">
+                    <label class="font-label-sm text-on-surface block text-xs">Epochs</label>
+                    <input id="trainEpochs" type="number" min="1" value="30" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm text-xs" />
+                </div>
+                <div class="space-y-base">
+                    <label class="font-label-sm text-on-surface block text-xs">imgsz</label>
+                    <input id="trainImgsz" type="number" min="64" step="32" value="640" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm text-xs" />
+                </div>
+                <div class="space-y-base">
+                    <label class="font-label-sm text-on-surface block text-xs">Batch</label>
+                    <input id="trainBatchSize" type="number" min="1" value="4" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm text-xs" />
+                </div>
+            </div>
+
+            <label class="flex items-center gap-2 text-sm text-on-surface mt-2 bg-surface-container-low p-3 rounded-lg">
+                <input id="trainConfirmedOnly" type="checkbox" class="accent-primary" />
+                仅使用已确认样本参与训练
+            </label>
+
+            <div id="trainRunFeedback" class="hidden text-sm text-error"></div>
+
+            <div class="flex justify-between items-center pt-4 border-t border-outline-variant mt-4">
+                <button type="button" onclick="refreshTrainJobs()" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">刷新任务</button>
+                <button id="trainRunSubmit" type="submit" disabled class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint disabled:opacity-50">创建训练任务</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">近期运行</div>
+                <h3 class="font-headline-md text-headline-md text-on-surface">最近训练任务</h3>
+            </div>
+            <button type="button" onclick="refreshTrainJobs()" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">刷新</button>
+        </div>
+        <div id="trainJobList" class="space-y-4">
+            <div class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant text-center">正在加载训练任务...</div>
+        </div>
+    </section>
+
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">模型版本管理</div>
+                <h3 class="font-headline-md text-headline-md text-on-surface">模型版本管理</h3>
+            </div>
+            <a href="{{ url_for('train.train_model_registry_page') }}" target="_blank" class="bg-surface-variant px-3 py-1 rounded-lg text-sm border border-outline-variant hover:bg-outline-variant text-on-surface transition-colors inline-block">管理页</a>
+        </div>
+        <div class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant">集中查看已发布模型、基础模型和线上使用中的模型版本。</div>
+    </section>
+  </div>
+</div>
+</div>

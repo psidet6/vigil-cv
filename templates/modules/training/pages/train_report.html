@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>训练评估 - {{ report.job.dataset_name or report.job.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/tailwind.css') }}" />
+</head>
+<body class="mr-editorial mr-train-page min-h-screen text-slate-900">
+  {% set status_labels = {
+    'queued': '排队中',
+    'running': '训练中',
+    'done': '已完成',
+    'error': '失败'
+  } %}
+  {% set preset_labels = {
+    'quick': '快速试跑',
+    'standard': '标准训练',
+    'lowmem': '低算力模式'
+  } %}
+  {% set base_model_labels = {
+    'yolo26n.pt': '快速版训练底模',
+    'yolo26s.pt': '标准版训练底模'
+  } %}
+  <div class="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
+    <header class="grid gap-4 xl:grid-cols-[1.4fr,0.9fr]">
+      <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-8">
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="{{ url_for('job.index') }}" class="mr-btn mr-btn--ghost">
+            返回首页
+          </a>
+          <a href="{{ url_for('job.history_page') }}" class="mr-btn mr-btn--ghost">
+            历史记录
+          </a>
+        </div>
+        <div class="mt-5 text-xs font-semibold uppercase tracking-[0.35em] text-teal-600">训练评估</div>
+        <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900">
+          {{ report.job.dataset_name or report.job.id }}
+        </h1>
+        <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
+          这里用于查看训练指标、评估图像和关键产物，并支持将本次训练得到的
+          <code class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">best.pt</code>
+          一键发布到
+          <code class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">{{ report.paths.run_dir and report.paths.run_dir.rsplit('\\', 1)[0] }}</code>
+          的模型目录中，方便后续直接用于识别。
+        </p>
+        <div class="mt-5 break-all font-mono text-xs text-slate-400">{{ report.job.id }}</div>
+      </section>
+
+      <section class="rounded-[32px] border border-slate-200/70 bg-slate-900 p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+        <div class="text-xs font-semibold uppercase tracking-[0.35em] text-sky-200">任务概况</div>
+        <div class="mt-5 space-y-4">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div class="text-sm text-slate-300">任务状态</div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="rounded-full bg-white/10 px-3 py-1 text-sm font-semibold">{{ status_labels.get(report.job.status, report.job.status or '--') }}</span>
+              {% if report.job.confirmed_only %}
+              <span class="rounded-full bg-teal-500/20 px-3 py-1 text-xs font-semibold text-teal-200 ring-1 ring-inset ring-teal-300/30">仅使用已确认样本</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-7 text-slate-300">
+            <div>训练底模：<span class="font-semibold text-white">{{ base_model_labels.get(report.job.base_model, report.job.base_model or '--') }}</span></div>
+            <div>训练方案：<span class="font-semibold text-white">{{ preset_labels.get(report.job.preset_key, report.job.preset_key or '--') }}</span></div>
+            <div>训练轮次：<span class="font-semibold text-white">{{ report.job.epochs or 0 }}</span></div>
+            <div>输入尺寸：<span class="font-semibold text-white">{{ report.job.imgsz or 0 }}</span></div>
+            <div>批次大小：<span class="font-semibold text-white">{{ report.job.batch_size or 0 }}</span></div>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <section class="mt-6 grid gap-6 xl:grid-cols-[1.35fr,0.95fr]">
+      <div class="space-y-6">
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          {% set assessment_status_class = {
+            'good': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+            'usable': 'bg-sky-50 text-sky-700 ring-sky-200',
+            'needs_improvement': 'bg-amber-50 text-amber-700 ring-amber-200'
+          } %}
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">结果判断</div>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">训练结果好坏分析</h2>
+            </div>
+            <span class="rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset {{ assessment_status_class.get(report.assessment.status, 'bg-slate-100 text-slate-700 ring-slate-200') }}">
+              {{ report.assessment.title }}
+            </span>
+          </div>
+          <p class="mt-4 text-sm leading-7 text-slate-600">
+            {{ report.assessment.summary }}
+          </p>
+          <div class="mt-5 grid gap-4 sm:grid-cols-3">
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">样本量判断</div>
+              <div class="mt-2 text-lg font-semibold text-slate-900">{{ report.assessment.sample_text }}</div>
+              <div class="mt-1 text-sm text-slate-500">已标注 {{ report.assessment.sample_count }} 张</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">训练 / 验证</div>
+              <div class="mt-2 text-lg font-semibold text-slate-900">{{ report.assessment.train_count }} / {{ report.assessment.val_count }}</div>
+              <div class="mt-1 text-sm text-slate-500">建议验证集尽量充足</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">最佳轮次</div>
+              <div class="mt-2 text-lg font-semibold text-slate-900">第 {{ report.assessment.best_epoch.epoch or '--' }} 轮</div>
+              <div class="mt-1 text-sm text-slate-500">
+                mAP50-95：{{ report.assessment.best_epoch.mAP50_95 or '--' }}
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+            <div class="text-sm font-semibold text-slate-900">建议动作</div>
+            <ul class="mt-3 space-y-2 text-sm leading-7 text-slate-600">
+              {% for item in report.assessment.recommendations %}
+              <li class="flex gap-3">
+                <span class="mt-2 inline-block h-2 w-2 rounded-full bg-teal-500"></span>
+                <span>{{ item }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">核心指标</div>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">本次训练结果</h2>
+            </div>
+          </div>
+          <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">查准率</div>
+              <div class="mt-2 text-3xl font-bold text-slate-900">{{ report.metrics.precision }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">查全率</div>
+              <div class="mt-2 text-3xl font-bold text-slate-900">{{ report.metrics.recall }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">综合指标 mAP50</div>
+              <div class="mt-2 text-3xl font-bold text-emerald-600">{{ report.metrics.mAP50 }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">综合指标 mAP50-95</div>
+              <div class="mt-2 text-3xl font-bold text-amber-500">{{ report.metrics.mAP50_95 }}</div>
+            </div>
+          </div>
+          <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">框损失（Box Loss）</div>
+              <div class="mt-2 text-2xl font-bold text-slate-900">{{ report.losses.box_loss }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs text-slate-500">分类损失（Cls Loss）</div>
+              <div class="mt-2 text-2xl font-bold text-slate-900">{{ report.losses.cls_loss }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">评估图像</div>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">曲线与结果预览</h2>
+            </div>
+          </div>
+          {% if report.images %}
+          <div class="mt-6 grid gap-4 lg:grid-cols-2">
+            {% for image in report.images %}
+            <a href="{{ image.url }}" target="_blank" rel="noreferrer" class="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md">
+              <div class="aspect-[4/3] overflow-hidden bg-slate-100">
+                <img src="{{ image.url }}" alt="{{ image.title }}" class="h-full w-full object-cover transition duration-200 group-hover:scale-[1.01]" loading="lazy" />
+              </div>
+              <div class="px-4 py-4">
+                <div class="text-sm font-semibold text-slate-900">{{ image.title }}</div>
+                <div class="mt-1 text-xs text-slate-400">{{ image.filename }}</div>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="mr-card mr-card--soft">
+            当前任务还没有可展示的评估图像。
+          </div>
+          {% endif %}
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">训练过程</div>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-900">逐轮指标变化</h2>
+            </div>
+          </div>
+          {% if report.history %}
+          <div class="mt-6 overflow-hidden rounded-3xl border border-slate-200">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3 text-left">轮次</th>
+                    <th class="px-4 py-3 text-left">耗时（秒）</th>
+                    <th class="px-4 py-3 text-left">框损失</th>
+                    <th class="px-4 py-3 text-left">分类损失</th>
+                    <th class="px-4 py-3 text-left">查准率</th>
+                    <th class="px-4 py-3 text-left">查全率</th>
+                    <th class="px-4 py-3 text-left">mAP50</th>
+                    <th class="px-4 py-3 text-left">mAP50-95</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  {% for row in report.history %}
+                  <tr>
+                    <td class="px-4 py-3 font-semibold text-slate-900">{{ row.epoch }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.time }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.train_box_loss }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.train_cls_loss }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.precision }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.recall }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.mAP50 }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ row.mAP50_95 }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% else %}
+          <div class="mr-card mr-card--soft">
+            当前任务还没有可展示的训练历史。
+          </div>
+          {% endif %}
+        </section>
+      </div>
+
+      <div class="space-y-6">
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">模型发布</div>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">发布 best.pt</h2>
+          <p class="mt-3 text-sm leading-7 text-slate-600">
+            点击后会将本次训练产出的
+            <code class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">best.pt</code>
+            复制到
+            <code class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">{{ model_dir }}</code>
+            目录，并写入一份元数据说明文件。
+          </p>
+
+          <div class="mt-6 space-y-4">
+            <label class="block">
+              <span class="mb-2 block text-sm font-medium text-slate-700">目标文件名</span>
+              <input id="publishTargetName" type="text" value="{{ report.publish.suggested_name }}"
+                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+            </label>
+            <button id="publishModelBtn" type="button"
+              class="mr-btn mr-btn--ink">
+              一键发布到模型目录
+            </button>
+            <div id="publishFeedback" class="hidden"></div>
+          </div>
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">关键文件</div>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">训练产物路径</h2>
+          <div class="mt-6 space-y-3 text-sm leading-7 text-slate-600">
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">训练目录</div>
+              <div class="mt-2 break-all font-mono text-xs text-slate-600">{{ report.paths.run_dir or '--' }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">产物目录</div>
+              <div class="mt-2 break-all font-mono text-xs text-slate-600">{{ report.paths.artifact_dir or '--' }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">最佳权重</div>
+              <div class="mt-2 break-all font-mono text-xs text-slate-600">{{ report.paths.best_weights or '--' }}</div>
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">指标文件</div>
+              <div class="mt-2 break-all font-mono text-xs text-slate-600">{{ report.paths.results_csv or '--' }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">发布记录</div>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">已发布模型</h2>
+          <div id="publishedModelList" class="mt-6 space-y-3">
+            {% if report.publish.published_models %}
+              {% for item in report.publish.published_models %}
+              <div class="mr-card mr-card--soft">
+                <div class="font-semibold text-slate-900">{{ item.model_name }}</div>
+                <div class="mt-1 break-all font-mono text-xs text-slate-500">{{ item.model_path }}</div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="mr-card mr-card--soft">
+                当前任务还没有发布记录。
+              </div>
+            {% endif %}
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var publishBtn = document.getElementById('publishModelBtn');
+      var targetInput = document.getElementById('publishTargetName');
+      var feedback = document.getElementById('publishFeedback');
+      var publishedList = document.getElementById('publishedModelList');
+      var publishUrl = {{ url_for("train.train_job_publish", job_id=report.job.id) | tojson }};
+
+      function setFeedback(message, tone) {
+        if (!feedback) return;
+        if (!message) {
+          feedback.className = 'hidden';
+          feedback.textContent = '';
+          return;
+        }
+        feedback.textContent = message;
+        feedback.className = 'rounded-2xl border px-4 py-3 text-sm';
+        if (tone === 'error') {
+          feedback.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-700');
+        } else {
+          feedback.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+        }
+      }
+
+      function appendPublishedItem(item) {
+        if (!publishedList || !item) return;
+        var placeholder = publishedList.querySelector('.border-dashed');
+        if (placeholder) {
+          placeholder.remove();
+        }
+        var wrapper = document.createElement('div');
+        wrapper.className = 'rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-7 text-slate-600';
+        wrapper.innerHTML =
+          '<div class="font-semibold text-slate-900"></div>' +
+          '<div class="mt-1 break-all font-mono text-xs text-slate-500"></div>';
+        wrapper.children[0].textContent = item.model_name || '--';
+        wrapper.children[1].textContent = item.model_path || '--';
+        publishedList.prepend(wrapper);
+      }
+
+      async function publishModel() {
+        if (!publishBtn) return;
+        publishBtn.disabled = true;
+        setFeedback('', '');
+        try {
+          var resp = await fetch(publishUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              target_name: targetInput ? targetInput.value.trim() : ''
+            })
+          });
+          var payload = await resp.json().catch(function () { return {}; });
+          if (!payload.ok || !resp.ok) {
+            throw new Error(payload.error || '发布模型失败');
+          }
+          if (payload.published && targetInput) {
+            targetInput.value = payload.published.model_name || targetInput.value;
+            appendPublishedItem(payload.published);
+          }
+          setFeedback(payload.message || 'best.pt 已发布到模型目录。', 'success');
+        } catch (err) {
+          setFeedback(err.message || '发布模型失败', 'error');
+        } finally {
+          publishBtn.disabled = false;
+        }
+      }
+
+      if (publishBtn) {
+        publishBtn.addEventListener('click', publishModel);
+      }
+    })();
+  </script>
+</body>
+</html>

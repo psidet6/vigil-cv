@@ -1,0 +1,241 @@
+    <div id="datasetWorkspaceOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/35 backdrop-blur-[1px]" onclick="closeDatasetWorkspace()"></div>
+    <aside id="datasetWorkspaceDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-[96vw] translate-x-full overflow-y-auto border-l border-white/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-transform duration-300 2xl:max-w-[1800px]">
+      <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div>
+          <div id="datasetWorkspaceMode" class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Dataset Workspace</div>
+          <h3 id="datasetWorkspaceTitle" class="mt-2 text-lg font-semibold text-slate-900">未选择数据集</h3>
+        </div>
+        <button type="button" onclick="closeDatasetWorkspace()" class="mr-btn mr-btn--ghost">关闭</button>
+      </div>
+      <div class="grid gap-6 px-5 py-5 xl:grid-cols-[360px,minmax(0,1fr)] 2xl:grid-cols-[400px,minmax(0,1fr)]">
+        <section class="min-w-0 xl:sticky xl:top-5 xl:self-start">
+          <div class="mr-card mr-card--soft">
+            <div id="datasetWorkspaceMeta" class="text-sm leading-7 text-slate-600">正在加载数据集...</div>
+          </div>
+          <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Assets</div>
+              <div id="datasetWorkspaceCount" class="mt-2 text-sm text-slate-600">图片 0 张</div>
+              <div id="datasetWorkspaceStats" class="mt-1 text-xs text-slate-400">已标注 0 张 · 未标注 0 张</div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="mr-btn mr-btn--ghost">
+                <input id="annotationOnlyUnlabeled" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                只看未标注
+              </label>
+              <label class="mr-btn mr-btn--ghost">
+                <input id="annotationOnlyLowQuality" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                只看低质量样本
+              </label>
+              <label class="mr-btn mr-btn--ghost">
+                <span>复核状态</span>
+                <select id="annotationReviewFilter" class="mr-btn mr-btn--ghost">
+                  <option value="all">全部</option>
+                  <option value="pending">待复核</option>
+                  <option value="reviewed">已复核</option>
+                  <option value="confirmed">已确认</option>
+                </select>
+              </label>
+              <button type="button" onclick="refreshDatasetWorkspace()" class="mr-btn mr-btn--ghost">刷新图片</button>
+            </div>
+          </div>
+          <div class="mt-5 max-h-[calc(100vh-260px)] overflow-y-auto pr-1">
+            <div id="datasetWorkspaceGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+              <div class="mr-card mr-card--soft">正在加载图片...</div>
+            </div>
+          </div>
+        </section>
+        <section class="min-w-0 space-y-6">
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Annotation</div>
+            <h4 class="mt-2 text-lg font-semibold text-slate-900">标注入口</h4>
+            <div id="datasetWorkspaceAnnotationTips" class="mt-3 text-sm leading-7 text-slate-600">
+              当前支持单图框标注、类别切换、删除、清空和保存。先在左侧选图，再在右侧图片上拖拽画框。
+            </div>
+            <div class="mr-card mr-card--soft">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Auto Label</div>
+                  <div class="mt-1 text-sm font-semibold text-slate-900">预标注后人工修正</div>
+                </div>
+                <label class="mr-btn mr-btn--ghost">
+                  <input id="annotationAutoOverwrite" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                  覆盖已有标注
+                </label>
+              </div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <label class="block">
+                  <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Model</span>
+                  <select id="annotationAutoModel" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                    <option value="">请选择预标注模型</option>
+                  </select>
+                </label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="block">
+                    <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Conf</span>
+                    <input id="annotationAutoConf" type="number" min="0.01" max="0.95" step="0.01" value="0.25"
+                      class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+                  </label>
+                  <label class="block">
+                    <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Imgsz</span>
+                    <input id="annotationAutoImgsz" type="number" min="320" max="1600" step="32" value="640"
+                      class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+                  </label>
+                </div>
+              </div>
+              <label class="mt-3 block">
+                <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">English Prompts</span>
+                <textarea id="annotationAutoPrompts" rows="2" placeholder="person, motorcycle, helmet"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100"></textarea>
+              </label>
+              <label class="mt-3 block">
+                <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Class Mapping</span>
+                <input id="annotationAutoClassMapping" type="text" placeholder="可选：raw_a=target_a, raw_b=target_b"
+                  class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+              </label>
+              <div class="mt-2 text-xs leading-6 text-slate-500">
+                开放词表模型建议填写英文提示词，并尽量与数据集类别顺序一致。闭集模型如类别名对不上，可在映射里写
+                <code class="rounded bg-white px-2 py-1 text-[11px] text-slate-700">模型类=数据集类</code>。
+                批量预标注会改为后台任务执行，任务进度会直接显示在当前面板里。
+              </div>
+              <div id="annotationAutoFeedback" class="mt-4 hidden"></div>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button id="annotationAutoCurrentBtn" type="button" class="mr-btn mr-btn--ink">预标注当前图</button>
+                <button id="annotationAutoUnlabeledBtn" type="button" class="mr-btn mr-btn--ghost">预标注未标注图片</button>
+              </div>
+              <div class="mt-3 flex flex-wrap items-end gap-3">
+                <label class="block">
+                  <span class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Keep Conf</span>
+                  <input id="annotationKeepConf" type="number" min="0.01" max="0.99" step="0.01" value="0.30"
+                    class="w-28 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+                </label>
+                <button id="annotationKeepHighBtn" type="button" class="mr-btn mr-btn--ghost">删除低分框</button>
+              </div>
+              <div class="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Auto Label Jobs</div>
+                    <div class="mt-1 text-sm font-semibold text-slate-900">预标注任务历史</div>
+                  </div>
+                  <button id="annotationAutoJobsRefreshBtn" type="button" class="mr-btn mr-btn--ghost">刷新</button>
+                </div>
+                <div id="annotationAutoJobList" class="mt-4 space-y-3">
+                  <div class="mr-card mr-card--soft">
+                    暂无预标注任务记录。
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button id="datasetWorkspaceAnnotateBtn" type="button" class="mr-btn mr-btn--ink">开始标注</button>
+              <button type="button" onclick="switchTab('Train')" class="mr-btn mr-btn--ghost">返回训练页</button>
+            </div>
+          </div>
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">
+            <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Annotation Editor</div>
+            <h4 class="mt-2 text-lg font-semibold text-slate-900">当前图片与框标注</h4>
+            <div class="mr-card mr-card--soft">
+              <div class="flex flex-wrap items-center gap-2">
+                <button id="annotationPrevBtn" type="button" disabled
+                  class="mr-btn mr-btn--ghost">
+                  上一张
+                </button>
+                <button id="annotationNextBtn" type="button" disabled
+                  class="mr-btn mr-btn--ghost">
+                  下一张
+                </button>
+                <button id="annotationPrevUnlabeledBtn" type="button" disabled
+                  class="mr-btn mr-btn--ghost">
+                  上一张未标注
+                </button>
+                <button id="annotationNextUnlabeledBtn" type="button" disabled
+                  class="mr-btn mr-btn--ghost">
+                  下一张未标注
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span id="annotationPosition">0 / 0</span>
+                <span id="annotationBoxCount">0 个框</span>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-4 sm:grid-cols-[1fr,auto]">
+              <label class="block">
+                <span class="mb-2 block text-sm font-medium text-slate-700">当前类别</span>
+                <select id="annotationClassSelect" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                  <option value="">请先选择数据集</option>
+                </select>
+              </label>
+              <div class="flex flex-wrap items-end gap-2">
+                <label class="block">
+                  <span class="mb-2 block text-sm font-medium text-slate-700">缩放</span>
+                  <select id="annotationZoomSelect" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+                    <option value="25" selected>25%</option>
+                    <option value="33">33%</option>
+                    <option value="50">50%</option>
+                    <option value="67">67%</option>
+                    <option value="75">75%</option>
+                    <option value="100">100%</option>
+                    <option value="125">125%</option>
+                    <option value="150">150%</option>
+                    <option value="175">175%</option>
+                    <option value="200">200%</option>
+                    <option value="250">250%</option>
+                  </select>
+                </label>
+                <button id="annotationFitBtn" type="button" class="mr-btn mr-btn--ghost">
+                  适应窗口
+                </button>
+                <button id="annotationSaveBtn" type="button" disabled class="mr-btn mr-btn--ink">保存标注</button>
+                <button id="annotationRemoveBtn" type="button" disabled class="mr-btn mr-btn--ghost">删除选中框</button>
+                <button id="annotationClearBtn" type="button" disabled class="mr-btn mr-btn--ghost">清空</button>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="annotationMarkReviewedBtn" type="button" disabled class="mr-btn mr-btn--ghost">标记已复核</button>
+              <button id="annotationMarkConfirmedBtn" type="button" disabled class="mr-btn mr-btn--ghost">标记已确认</button>
+              <button id="annotationClearReviewBtn" type="button" disabled class="mr-btn mr-btn--ghost">恢复待复核</button>
+            </div>
+            <div id="annotationFeedback" class="mt-4 hidden"></div>
+            <div id="datasetAssetPreviewBox" class="mt-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+              先从左侧点一张图片，这里会加载预览并支持画框。
+            </div>
+            <div id="annotationStageWrapper" class="mt-4 hidden min-w-0">
+              <div class="relative max-h-[78vh] overflow-hidden rounded-3xl border border-slate-200 bg-slate-950/5 p-3">
+                <div id="annotationViewport" class="max-h-[72vh] overflow-auto">
+                  <div id="annotationStage" class="relative mx-auto w-fit min-w-full cursor-crosshair select-none">
+                  <img id="annotationImage" src="" alt="" class="block max-w-none rounded-2xl object-contain" draggable="false" />
+                  <div id="annotationOverlay" class="absolute inset-0"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 text-xs leading-6 text-slate-500">
+                操作说明：拖拽创建框，点击已有框可选中，类别下拉会作用到当前选中框。快捷键支持
+                <code class="rounded bg-white px-2 py-1 text-[11px] text-slate-700">Ctrl+S</code>
+                保存、
+                <code class="rounded bg-white px-2 py-1 text-[11px] text-slate-700">Delete</code>
+                删除选中框、
+                <code class="rounded bg-white px-2 py-1 text-[11px] text-slate-700">← / →</code>
+                切图。现在默认以 25% 缩放打开高分辨率图片，也可以点击“适应窗口”自动缩放到刚好完整显示；超大图片只会在右侧标注区内部滚动，不会再把左侧素材列表挤掉。
+              </div>
+            </div>
+            <div id="datasetAssetPreviewMeta" class="mt-4 text-sm leading-7 text-slate-600"></div>
+            <div class="mr-card mr-card--soft">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Boxes</div>
+                  <h5 class="mt-1 text-sm font-semibold text-slate-900">当前标注框列表</h5>
+                </div>
+                <div class="text-xs text-slate-500">点击条目可定位到对应框</div>
+              </div>
+              <div id="annotationBoxList" class="mt-4 space-y-3">
+                <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm text-slate-500">
+                  选择一张图片后，这里会显示当前图片的所有标注框。
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+

@@ -1,0 +1,111 @@
+<div id="tabFace" class="hidden">
+<div class="space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">人脸库状态</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface">人脸库状态</h2>
+                <p class="font-body-md text-on-surface-variant mt-2 max-w-2xl text-sm">管理本地人脸识别底库：同步私有网络照片、重建特征向量、查看当前库是否可用，为风险人员自动识别和任务下发提供支撑。</p>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="runFaceLibraryAction('global', 'sync')" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint">同步人脸库</button>
+                <button type="button" onclick="runFaceLibraryAction('global', 'rebuild')" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">重建特征</button>
+            </div>
+        </div>
+        
+        <div id="faceStatusMetrics" class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">库状态</div>
+                <div id="faceMetricReady" class="text-xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">有效人员</div>
+                <div id="faceMetricPersons" class="text-xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">底库照片</div>
+                <div id="faceMetricPhotos" class="text-xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">特征文件</div>
+                <div id="faceMetricFeatures" class="text-xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">私有网络 SQL</div>
+                <div id="faceMetricSql" class="text-xl font-bold text-on-surface mt-1">--</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faceTaskSection" class="hidden bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <h3 id="faceTaskTitle" class="font-headline-md text-headline-md text-on-surface">人脸库任务</h3>
+                <span id="faceTaskBadge" class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs">运行中</span>
+            </div>
+        </div>
+        <p id="faceTaskMessage" class="text-sm text-on-surface-variant mb-4"></p>
+        <div class="w-full bg-surface-variant h-2 rounded-full overflow-hidden">
+            <div id="faceTaskBar" class="h-full w-0 bg-primary transition-all"></div>
+        </div>
+        <div class="flex justify-between text-xs text-on-surface-variant mt-2">
+            <span id="faceTaskPct">进度 0%</span>
+            <span id="faceTaskCount">0 / 0</span>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+        <div class="xl:col-span-8 space-y-xl">
+            <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">人员名录</div>
+                        <h2 class="font-headline-md text-headline-md text-on-surface">人员名录</h2>
+                        <p class="font-body-md text-on-surface-variant mt-2 text-sm">浏览已入库人员、核对人员编号和底库照片。点击卡片可查看人员详情，便于确认识别对象是否可用于后续任务下发。</p>
+                    </div>
+                    <div>
+                        <input id="personSearchInput" type="text" placeholder="搜索姓名或人员编号..." oninput="debouncePersonSearch()" class="bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-4 py-2 text-sm w-64" />
+                    </div>
+                </div>
+                
+                <div id="personGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6"></div>
+                
+                <div id="personPagination" class="flex justify-between items-center mt-6 pt-4 border-t border-outline-variant">
+                    <div id="personPageInfo" class="text-sm text-on-surface-variant"></div>
+                    <div class="flex gap-2">
+                        <button id="personPrevBtn" type="button" onclick="loadPersonDirectory(PERSON_STATE.page - 1)" class="bg-surface-variant px-4 py-2 rounded-lg text-sm disabled:opacity-50">上一页</button>
+                        <button id="personNextBtn" type="button" onclick="loadPersonDirectory(PERSON_STATE.page + 1)" class="bg-surface-variant px-4 py-2 rounded-lg text-sm disabled:opacity-50">下一页</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <div class="xl:col-span-4 space-y-xl">
+            <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">Usage 办理提示</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface mb-4">使用建议</h2>
+                <ol class="list-decimal list-inside space-y-2 text-sm text-on-surface-variant">
+                    <li>先同步人脸库，确认“库状态”为已就绪。</li>
+                    <li>同步后如新增照片，建议再执行一次“重建特征”。</li>
+                    <li>若识别结果需要下发任务，请优先核对姓名、人员编号和底库照片。</li>
+                    <li>人脸库不可用时，任务下发自动流转也会受影响。</li>
+                </ol>
+            </section>
+
+            <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">操作历史</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface mb-4">操作历史</h2>
+                <p class="text-sm text-on-surface-variant mb-4">查看人脸库同步、重建的执行记录与处理数量，便于排查数据是否已更新到位。</p>
+                <div id="faceOperationHistory" class="bg-surface-container-low rounded-xl overflow-hidden">
+                    <div class="grid grid-cols-3 gap-2 p-3 text-xs font-bold text-on-surface border-b border-outline-variant">
+                        <div>操作</div>
+                        <div>状态</div>
+                        <div>时间</div>
+                    </div>
+                    <div id="faceHistoryRows" class="text-xs text-on-surface-variant divide-y divide-outline-variant"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+</div>

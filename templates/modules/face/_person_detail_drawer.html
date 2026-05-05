@@ -1,0 +1,33 @@
+﻿  <div id="personDetailOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/35 backdrop-blur-[1px]" onclick="closePersonDetail()"></div>
+  <aside id="personDetailDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md translate-x-full overflow-y-auto border-l border-white/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Person Detail</div>
+        <h3 id="personDetailName" class="mt-2 text-lg font-semibold text-slate-900"></h3>
+      </div>
+      <button type="button" onclick="closePersonDetail()" class="mr-btn mr-btn--ghost">关闭</button>
+    </div>
+    <div class="space-y-5 px-5 py-5">
+      <div class="flex items-center gap-4">
+        <div id="personDetailAvatar" class="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-2xl font-bold text-teal-700"></div>
+        <div>
+          <div id="personDetailFullName" class="text-lg font-semibold text-slate-900"></div>
+          <div id="personDetailIdNumber" class="text-sm text-slate-500"></div>
+        </div>
+      </div>
+      <div class="mr-card mr-card--soft">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">基本信息</div>
+        <div class="mt-3 space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-slate-500">编号类型</span><span id="personDetailIdType" class="font-medium text-slate-900"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500">人员编号</span><span id="personDetailIdNum2" class="font-medium text-slate-900"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500">特征状态</span><span id="personDetailFeature" class="font-medium"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500">底库照片</span><span id="personDetailPhotoStatus" class="font-medium text-slate-900"></span></div>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">底库照片</div>
+        <div id="personDetailPhoto" class="mt-3 grid grid-cols-2 gap-3"></div>
+      </div>
+    </div>
+  </aside>
+

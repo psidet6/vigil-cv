@@ -1,0 +1,33 @@
+name: vigil-cv
+
+x-app-common: &app-common
+  image: vigil-cv:latest
+  build:
+    context: .
+    dockerfile: ops/Dockerfile
+  env_file:
+    - ${APP_ENV_FILE:-./app.env}
+  volumes:
+    - ${VIGIL_CV_ROOT:-./runtime}/data:/data
+    - ${VIGIL_CV_ROOT:-./runtime}/data:/app/data
+    - ${VIGIL_CV_ROOT:-./runtime}/output:/app/output
+    - ${VIGIL_CV_ROOT:-./runtime}/datasets:/app/datasets
+    - ${VIGIL_CV_ROOT:-./runtime}/face_data:/app/face_data
+    - ${VIGIL_CV_ROOT:-./runtime}/train_runs:/app/train_runs
+    - ${VIGIL_CV_ROOT:-./runtime}/upload_tmp:/app/upload_tmp
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app-common
+    container_name: vigil-cv-web
+    command: python app.py
+    ports:
+      - "${APP_PORT:-5001}:5001"
+
+  worker:
+    <<: *app-common
+    container_name: vigil-cv-worker
+    command: python worker.py
+    depends_on:
+      - web

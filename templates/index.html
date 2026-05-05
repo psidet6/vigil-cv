@@ -1,0 +1,415 @@
+﻿<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vigil CV</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='falcon-badge.svg') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/tailwind.css') }}" />
+
+  <script>
+    window.INDEX_PAGE_BOOTSTRAP = {
+      uploadModels: {{ upload_models | tojson }},
+      uploadModelDefault: {{ upload_model_default | tojson }},
+      trainBaseModels: {{ train_base_models | tojson }},
+      urls: {
+        cancelJob: {{ url_for("job.cancel_job", job_id="__J__") | tojson }},
+        listJobs: {{ url_for("job.list_jobs") | tojson }},
+        jobProgress: {{ url_for("job.get_progress", job_id="__J__") | tojson }},
+        downloadZip: {{ url_for("file.download_zip", job_id="__J__") | tojson }},
+        downloadSummary: {{ url_for("file.download_summary", job_id="__J__") | tojson }},
+        startJob: {{ url_for("job.start_job") | tojson }}
+      }
+    };
+  </script>
+  <script src="{{ url_for('static', filename='modules/detection/tasks.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/dispatch/dispatch.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/training/dataset.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/training/training.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/training/annotation.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/detection/results.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/face/face-library.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modules/diagnostics/task-queue.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='shared/js/auth.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='shared/js/bootstrap.js') }}" defer></script>
+</head>
+<body class="bg-surface-container-low text-on-surface font-body-md h-screen overflow-hidden flex flex-col antialiased">
+
+<!-- AUTH SHELL -->
+<div id="authShell" class="auth-screen fixed inset-0 z-50 overflow-hidden">
+  <!-- Background effects -->
+  <div class="auth-bg-grid"></div>
+  <div class="auth-scan-line"></div>
+  <div class="auth-glow-orb auth-glow-orb--1"></div>
+  <div class="auth-glow-orb auth-glow-orb--2"></div>
+
+  <div class="relative z-10 flex h-full items-center justify-center overflow-y-auto px-6 py-10">
+    <div class="grid w-full max-w-[1100px] items-center gap-10 lg:grid-cols-[1.4fr_1fr] xl:gap-16">
+
+      <!-- Hero -->
+      <section>
+        <div class="auth-badge mb-8">
+          <span class="auth-badge__dot"></span>
+          示例机构视觉分析团队
+        </div>
+
+        <div class="mb-6 flex items-center gap-5">
+          <div class="auth-logo-icon">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 20 L4 7 L20 7 Z" fill="rgba(255,255,255,0.25)"/>
+              <circle cx="12" cy="10.5" r="2.2" fill="white" opacity="0.9"/>
+              <path d="M9 14.5 Q12 13 15 14.5" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.9"/>
+              <rect x="9" y="18.5" width="6" height="2.5" rx="1.25" fill="white"/>
+              <path d="M4 7 L1.5 4" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-linecap="round"/>
+              <path d="M20 7 L22.5 4" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-linecap="round"/>
+              <path d="M12 7 L12 2.5" stroke="rgba(255,255,255,0.4)" stroke-width="1" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mb-1 text-[11px] font-bold uppercase tracking-[0.35em] text-blue-300/70">VIGIL CV · AI PLATFORM</div>
+            <h1 class="auth-title-glow text-[3.8rem] font-black leading-none">Vigil CV</h1>
+          </div>
+        </div>
+
+        <p class="mb-3 max-w-[460px] text-[1.2rem] font-semibold leading-[1.45] text-slate-200">
+          面向业务团队的智能视觉协同平台
+        </p>
+        <p class="mb-11 max-w-[420px] text-[13px] leading-[1.85] text-slate-400">
+          将风险事件识别、人员核验、模型沉淀和任务下发做成一条闭环，强调实用、好上手、少录入。
+        </p>
+
+        <div class="grid max-w-[460px] grid-cols-3 gap-3.5">
+          <div class="auth-feature-card">
+            <div class="auth-feature-icon">🎯</div>
+            <div class="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sky-300">检测研判</div>
+            <div class="text-[11px] leading-normal text-slate-400">历史巡检 + 现场素材</div>
+          </div>
+          <div class="auth-feature-card">
+            <div class="auth-feature-icon">🔍</div>
+            <div class="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sky-300">身份核验</div>
+            <div class="text-[11px] leading-normal text-slate-400">识别后自动流转</div>
+          </div>
+          <div class="auth-feature-card">
+            <div class="auth-feature-icon">🧠</div>
+            <div class="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sky-300">能力成长</div>
+            <div class="text-[11px] leading-normal text-slate-400">基层可用自训练</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Login Card -->
+      <section class="auth-login-card">
+        <div class="mb-6 flex items-start justify-between gap-3">
+          <div>
+            <div class="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-sky-300/55">AUTHENTICATION</div>
+            <h2 class="mb-1 text-[1.45rem] font-extrabold text-slate-50">系统登录</h2>
+            <p class="text-[11px] text-slate-600">支持注册申请、账号登录、演示模式进入</p>
+          </div>
+          <button type="button" onclick="quickEnterApp()" class="auth-submit-btn shrink-0 whitespace-nowrap px-[18px] py-2 text-xs">演示进入</button>
+        </div>
+
+        <div class="auth-tab-bar mb-6">
+          <button id="authTabLogin" type="button" class="auth-tab active" onclick="switchAuthPanel('login')">登录</button>
+          <button id="authTabRegister" type="button" class="auth-tab" onclick="switchAuthPanel('register')">注册申请</button>
+        </div>
+
+        <form id="authPanelLogin" class="space-y-5" onsubmit="return handleLogin(event)">
+          <label class="block">
+            <span class="auth-label">工号 / 用户名</span>
+            <input id="authLoginUsername" type="text" value="demo" class="auth-input" placeholder="请输入工号或用户名" />
+          </label>
+          <label class="block">
+            <span class="auth-label">登录密码</span>
+            <input id="authLoginPassword" type="password" value="123456" class="auth-input" placeholder="请输入密码" />
+          </label>
+          <div class="auth-demo-hint">
+            演示账号：<code>demo</code> &nbsp;/&nbsp; <code>123456</code>，也可直接注册新账号。
+          </div>
+          <div id="authLoginFeedback" class="min-h-[18px] text-[13px] text-red-400"></div>
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <button type="button" onclick="switchAuthPanel('register')" class="bg-transparent p-0 text-[13px] font-medium text-slate-600 transition hover:text-sky-300">去注册 →</button>
+            <button type="submit" class="auth-submit-btn">登录并进入系统</button>
+          </div>
+        </form>
+
+        <form id="authPanelRegister" class="hidden" onsubmit="return handleRegister(event)">
+          <div class="mb-[18px] grid grid-cols-2 gap-3.5">
+            <label class="block">
+              <span class="auth-label">姓名</span>
+              <input id="authRegisterName" type="text" class="auth-input" />
+            </label>
+            <label class="block">
+              <span class="auth-label">工号</span>
+              <input id="authRegisterUsername" type="text" class="auth-input" />
+            </label>
+          </div>
+          <label class="mb-[18px] block">
+            <span class="auth-label">所属单位</span>
+            <input id="authRegisterUnit" type="text" value="示例机构视觉分析团队" class="auth-input" />
+          </label>
+          <label class="mb-[18px] block">
+            <span class="auth-label">联系电话</span>
+            <input id="authRegisterPhone" type="text" class="auth-input" />
+          </label>
+          <label class="mb-[18px] block">
+            <span class="auth-label">设置密码</span>
+            <input id="authRegisterPassword" type="password" class="auth-input" />
+          </label>
+          <div class="auth-demo-hint auth-demo-hint--warning">
+            注册后可直接使用该账号登录，当前用于演示和内部试用。
+          </div>
+          <div id="authRegisterFeedback" class="mb-3 min-h-[18px] text-[13px] text-emerald-400"></div>
+          <div class="flex items-center justify-between gap-3">
+            <button type="button" onclick="switchAuthPanel('login')" class="bg-transparent p-0 text-[13px] font-medium text-slate-600 transition hover:text-sky-300">← 返回登录</button>
+            <button type="submit" class="auth-submit-btn">提交申请</button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<section id="appShell" class="hidden flex flex-col h-full w-full">
+  <!-- TopAppBar -->
+  <header class="bg-[#f5f4ed] text-[#c96442] font-serif tracking-tight border-b border-[#e8e6dc] flex justify-between items-center w-full px-8 h-16 shrink-0 z-50 relative">
+    <div class="flex items-center gap-gutter">
+      <h1 class="font-serif text-3xl font-bold tracking-widest text-[#c96442]">Vigil CV</h1>
+    </div>
+    <nav class="hidden md:flex items-center h-full">
+      <ul class="flex h-full">
+        <li class="h-full flex items-center px-4 cursor-pointer text-[#c96442] font-bold border-b-2 border-[#c96442] transition-colors">
+            系统状态: 运行正常
+        </li>
+        <li class="h-full flex items-center px-4 cursor-pointer text-stone-500 font-sans text-xs uppercase tracking-widest transition-colors">
+            PostgreSQL: <span id="topBarPool" class="ml-1">--</span>
+        </li>
+        <li class="h-full flex items-center px-4 cursor-pointer text-stone-500 font-sans text-xs uppercase tracking-widest transition-colors">
+            今日命中: <span id="topBarHit" class="ml-1">--</span>
+        </li>
+        <li class="h-full flex items-center px-4 cursor-pointer text-stone-500 font-sans text-xs uppercase tracking-widest transition-colors">
+            待下发: <span id="topBarPending" class="ml-1">--</span>
+        </li>
+        <li class="h-full flex items-center px-4 cursor-pointer text-stone-500 font-sans text-xs uppercase tracking-widest transition-colors">
+            <span id="topClock">--:--:--</span>
+        </li>
+      </ul>
+    </nav>
+    <div class="flex items-center gap-4">
+      <span class="text-sm font-label-sm text-stone-600">示例机构</span>
+      <button onclick="logoutApp()" class="ml-4 text-sm font-label-sm text-stone-500 hover:text-[#c96442] flex items-center gap-1 transition-colors">
+        <span class="material-symbols-outlined text-[18px]">logout</span> 退出
+      </button>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden relative">
+    <!-- SideNavBar -->
+    <aside class="flex bg-[#faf9f5] text-[#c96442] font-sans text-stone-700 w-64 border-r border-[#e8e6dc] shadow-sm flex-col justify-between py-6 h-full shrink-0 z-40 relative">
+      <div>
+        <div class="px-6 mb-8 flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center shrink-0 border border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant">shield</span>
+          </div>
+          <div>
+            <h2 class="font-headline-md text-headline-md text-on-surface">Vigil CV</h2>
+            <p class="font-label-sm text-label-sm text-on-surface-variant">AI 工作台</p>
+          </div>
+        </div>
+        <nav class="flex flex-col gap-2 px-4">
+          <a id="tabBtnDatabase" class="mr-nav-item active flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Database');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">auto_awesome</span>
+              数据巡检
+            </div>
+          </a>
+          <a id="tabBtnUpload" class="mr-nav-item flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Upload');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">upload_file</span>
+              本地素材
+            </div>
+          </a>
+          <a id="tabBtnFace" class="mr-nav-item flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Face');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">face</span>
+              人脸库
+            </div>
+          </a>
+          <a id="tabBtnDispatch" class="mr-nav-item flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Dispatch');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">send</span>
+              任务下发
+            </div>
+            <span id="navBadgePending" class="bg-primary text-on-primary text-[10px] px-2 py-0.5 rounded-full">0</span>
+          </a>
+          <a id="tabBtnTrain" class="mr-nav-item flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Train');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">model_training</span>
+              模型训练
+            </div>
+          </a>
+          <a id="tabBtnDiagnostics" class="mr-nav-item flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out border-l-4 border-transparent" href="#" onclick="switchTab('Diagnostics');return false;">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">settings_suggest</span>
+              系统诊断
+            </div>
+          </a>
+        </nav>
+      </div>
+      <div class="px-4 border-t border-outline-variant pt-4 mt-auto">
+        <div class="flex items-center gap-3 px-4 py-3">
+          <div class="w-8 h-8 bg-surface-variant rounded-full flex items-center justify-center text-xs">值</div>
+          <div>
+            <div id="currentUserName" class="text-sm font-bold text-stone-800">值班员</div>
+            <div id="currentUserUnit" class="text-xs text-stone-500">基层业务人员</div>
+          </div>
+        </div>
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-[#f5f4ed] transition-all duration-200 ease-in-out cursor-pointer" onclick="logoutApp()">
+          <span class="material-symbols-outlined">logout</span>
+          退出登录
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <main class="flex-1 overflow-y-auto px-lg py-lg relative z-10 mr-main">
+      <div class="max-w-6xl mx-auto space-y-xl">
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="space-y-2 mb-6">
+          {% for msg in messages %}
+          <div class="bg-surface ring-1 ring-primary/20 rounded-xl p-4 text-sm text-primary">{{ msg }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Stat Strip -->
+        <section class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-xl p-4 shadow-sm">
+            <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">已完成</p>
+            <p class="font-headline-md text-on-surface" id="qs-done">--</p>
+          </div>
+          <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-xl p-4 shadow-sm">
+            <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">运行中</p>
+            <p class="font-headline-md text-on-surface text-primary" id="runningCount">0</p>
+          </div>
+          <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-xl p-4 shadow-sm">
+            <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">待处理</p>
+            <p class="font-headline-md text-on-surface" id="qs-pending">--</p>
+          </div>
+          <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-xl p-4 shadow-sm">
+            <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-widest mb-1">已保留</p>
+            <p class="font-headline-md text-on-surface" id="qs-kept">--</p>
+          </div>
+          <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-xl p-4 shadow-sm">
+            <p class="font-label-sm text-[10px] text-error uppercase tracking-widest mb-1">失败</p>
+            <p class="font-headline-md text-error" id="qs-failed">--</p>
+          </div>
+        </section>
+
+        <!-- Header -->
+        <header class="border-b border-outline-variant pb-md flex justify-between items-end">
+          <div>
+            <h2 id="contentTitle" class="font-display-xl text-3xl text-on-surface tracking-tight">数据监测与研判</h2>
+            <p id="contentSubtitle" class="font-body-lg text-base text-on-surface-variant mt-2 max-w-3xl">分析传入的数据流，配置检测参数，并对潜在的命中结果进行研判。</p>
+          </div>
+          <div class="flex gap-3">
+            <button class="bg-surface ring-1 ring-[#e8e6dc] text-on-surface font-label-sm px-4 py-2 rounded-lg hover:bg-surface-variant transition-colors" onclick="refreshJobs(this)">刷新</button>
+            <button id="headerPrimaryBtn" class="bg-primary text-on-primary font-label-sm px-4 py-2 rounded-lg hover:bg-surface-tint transition-colors" onclick="runTabPrimaryAction('Database')">新建检测任务</button>
+          </div>
+        </header>
+
+        <!-- Tabs Content -->
+        <div class="mr-content-scroll">
+          {% include 'modules/detection/_database_tab.html' %}
+          {% include 'modules/detection/_upload_tab.html' %}
+          {% include 'modules/training/_train_tab.html' %}
+          {% include 'modules/dispatch/_dispatch_tab.html' %}
+          {% include 'modules/face/_face_tab.html' %}
+          {% include 'modules/diagnostics/_task_queue_tab.html' %}
+        </div>
+      </div>
+    </main>
+
+    <!-- NavigationDrawer (Right Rail) -->
+    <aside class="flex xl:flex bg-[#faf9f5] font-sans text-xs uppercase tracking-widest w-72 border-l border-[#e8e6dc] flex-col p-6 h-full shrink-0 z-40 relative">
+      <div class="mb-lg">
+        <h3 class="font-serif font-bold text-stone-800 text-lg mb-md capitalize normal-case">快捷侧栏</h3>
+        <div class="bg-surface ring-1 ring-[#e8e6dc] rounded-lg p-3">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-[10px] text-stone-500">今日命中</span>
+            <span class="font-bold text-stone-800" id="panelStatHit">--</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] text-stone-500">待下发</span>
+            <span class="font-bold text-primary" id="panelStatPending">--</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex flex-col gap-6 flex-1 overflow-y-auto">
+        <!-- Running Tasks Section -->
+        <div>
+          <h4 class="text-[#c96442] font-bold flex items-center gap-2 mb-4 cursor-pointer hover:text-stone-900">
+            <span class="material-symbols-outlined text-sm">pending_actions</span>
+            运行中的任务
+          </h4>
+          <div id="jobsInfo" class="space-y-4 pl-6">
+            <div class="text-stone-400 normal-case">当前没有运行的任务</div>
+          </div>
+        </div>
+
+        <!-- Match Stream Section -->
+        <div class="mt-8">
+          <h4 class="text-stone-500 flex items-center gap-2 mb-4 cursor-pointer hover:text-stone-900">
+            <span class="material-symbols-outlined text-sm">stream</span>
+            命中流水
+          </h4>
+          <div id="faceMatchStream" class="grid grid-cols-2 gap-2 pl-6">
+             <div class="text-stone-400 normal-case col-span-2">无命中记录</div>
+          </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="mt-8">
+          <h4 class="text-stone-500 flex items-center gap-2 mb-4 cursor-pointer hover:text-stone-900">
+            <span class="material-symbols-outlined text-sm">bolt</span>
+            快捷操作
+          </h4>
+          <div class="space-y-2 pl-6">
+            <button class="w-full text-left font-label-sm text-[10px] text-stone-600 hover:text-stone-900 py-1 border-b border-transparent hover:border-stone-300 transition-all" onclick="switchTab('Upload')">上传素材</button>
+            <button class="w-full text-left font-label-sm text-[10px] text-stone-600 hover:text-stone-900 py-1 border-b border-transparent hover:border-stone-300 transition-all" onclick="switchTab('Face')">人脸库</button>
+            <button class="w-full text-left font-label-sm text-[10px] text-stone-600 hover:text-stone-900 py-1 border-b border-transparent hover:border-stone-300 transition-all" onclick="switchTab('Dispatch')">任务下发</button>
+            <button class="w-full text-left font-label-sm text-[10px] text-stone-600 hover:text-stone-900 py-1 border-b border-transparent hover:border-stone-300 transition-all" onclick="window.open('{{ url_for('job.history_page') }}')">历史记录</button>
+          </div>
+        </div>
+      </nav>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      function tick() {
+        var el = document.getElementById('topClock');
+        if (el) {
+          var d = new Date();
+          el.textContent = d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        setTimeout(tick, 1000);
+      }
+      tick();
+    })();
+  </script>
+</section>
+
+{% include 'modules/training/_dataset_workspace_drawer.html' %}
+{% include 'modules/detection/_result_detail_drawer.html' %}
+{% include 'modules/training/_result_import_drawer.html' %}
+{% include 'modules/face/_person_detail_drawer.html' %}
+
+</body>
+</html>

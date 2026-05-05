@@ -1,0 +1,124 @@
+﻿<div id="tabDatabase">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+  <!-- Left Column (Main Focus) -->
+  <div class="xl:col-span-8 space-y-xl">
+    <!-- Task Creation Form -->
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+      <h3 class="font-headline-md text-headline-md text-on-surface mb-md">配置检测参数</h3>
+      <form id="jobForm" onsubmit="return startJob(event)" class="space-y-md">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+          <div class="space-y-base">
+            <label class="font-label-sm text-label-sm text-on-surface block">开始时间 (kssj)</label>
+            <input type="datetime-local" id="kssj" name="kssj" value="{{ kssj_local }}" step="1" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+          </div>
+          <div class="space-y-base">
+            <label class="font-label-sm text-label-sm text-on-surface block">结束时间 (jssj)</label>
+            <input type="datetime-local" id="jssj" name="jssj" value="{{ jssj_local }}" step="1" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+          </div>
+        </div>
+        
+        <div class="space-y-base">
+          <label class="font-label-sm text-label-sm text-on-surface block">研判模型</label>
+          <select id="model_key" name="model_key" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm">
+            <option value="general" {% if model_default == 'general' %}selected{% endif %}>通用人车要素识别</option>
+            <option value="special" {% if model_default == 'special' %}selected{% endif %}>专项风险事件识别</option>
+          </select>
+        </div>
+
+        <div class="space-y-base">
+          <label for="classes" id="classesLabel" class="font-label-sm text-label-sm text-on-surface block">检测提示词</label>
+          <input type="text" id="classes" name="classes" value="" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+          <p id="classesHelp" class="mt-1 text-xs text-on-surface-variant"></p>
+        </div>
+        
+        <div id="presetPanel" class="hidden bg-surface-container-low p-4 rounded-lg mt-2">
+            <div class="text-xs font-semibold uppercase text-primary">常用预设</div>
+            <div id="presetButtons" class="mt-2 flex flex-wrap gap-2"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter mt-4">
+            <div class="space-y-base">
+                <div class="flex justify-between items-center">
+                    <label class="font-label-sm text-label-sm text-on-surface block">置信度: <span id="confValue">{{ conf_default }}</span></label>
+                </div>
+                <input type="range" id="confRange" name="conf" min="0" max="1" step="0.01" value="{{ conf_default }}" class="w-full accent-primary" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-base">
+                    <label class="font-label-sm text-label-sm text-on-surface block">批大小</label>
+                    <input type="number" id="batch_size" name="batch_size" value="{{ batch_default }}" min="1" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+                </div>
+                <div class="space-y-base">
+                    <label class="font-label-sm text-label-sm text-on-surface block">图片尺寸</label>
+                    <input type="number" id="imgsz" name="imgsz" value="{{ imgsz_default }}" min="64" step="32" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-sm space-y-4">
+            <label class="font-label-sm text-label-sm text-on-surface block">附加时段过滤</label>
+            <div class="flex gap-2">
+                <button type="button" onclick="checkAllHours(true)" class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded text-xs">全选</button>
+                <button type="button" onclick="checkAllHours(false)" class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded text-xs">清空</button>
+            </div>
+            <div class="grid grid-cols-6 lg:grid-cols-8 gap-2">
+                {% for h in range(24) %}
+                <label class="flex items-center gap-1 text-sm bg-surface-container-low px-2 py-1 rounded border border-transparent hover:border-primary">
+                  <input type="checkbox" name="hours" value="{{ '%02d' % h }}" class="accent-primary" />
+                  {{ '%02d' % h }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="pt-sm mt-4 border-t border-outline-variant">
+          <button type="submit" class="bg-primary text-on-primary font-label-sm text-label-sm px-gutter py-sm rounded-lg hover:bg-surface-tint transition-colors w-full md:w-auto flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">add</span>
+            新建检测任务
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Progress & Results sections -->
+    <section class="space-y-6">
+        <div id="progressBox" class="hidden bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-headline-md text-headline-md text-on-surface">任务进度</h3>
+            <span id="progressStatus" class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-3 py-1 rounded-full text-xs">运行中</span>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-xl">
+            <div id="progressText" class="font-label-sm text-sm text-on-surface">已处理 0 / 0</div>
+            <div id="progressSubtext" class="text-xs text-on-surface-variant mt-1">模型：通用</div>
+            <div class="mt-3 w-full bg-surface-variant h-2 rounded-full overflow-hidden">
+                <div id="progressBar" class="h-full w-0 bg-primary transition-all"></div>
+            </div>
+          </div>
+          <div id="downloadLinks" class="mt-4 hidden flex gap-3">
+            <a id="zipLink" href="#" target="_blank" class="bg-primary text-on-primary font-label-sm px-4 py-2 rounded-lg hover:bg-surface-tint transition-colors">下载 ZIP</a>
+            <a id="sumLink" href="#" target="_blank" class="bg-surface-variant text-on-surface-variant font-label-sm px-4 py-2 rounded-lg hover:bg-outline-variant transition-colors">下载摘要说明</a>
+            <button type="button" onclick="cancelCurrent()" class="bg-error text-on-error font-label-sm px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">停止当前任务</button>
+          </div>
+        </div>
+
+        <div id="databaseResultPanel" class="hidden bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-headline-md text-headline-md text-on-surface">结果图身份识别</h3>
+            <div class="flex gap-2">
+                <button type="button" onclick="toggleAllResults('database', true)" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">全选</button>
+                <button type="button" onclick="toggleAllResults('database', false)" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">清空</button>
+                <button id="databaseAddDatasetBtn" type="button" onclick="openResultImportModal('database')" class="bg-surface-variant text-primary px-3 py-1 rounded-lg text-sm border border-primary">加入数据集</button>
+                <button id="databaseIdentifySelectedBtn" type="button" onclick="identifySelectedResults('database')" class="bg-primary text-on-primary px-3 py-1 rounded-lg text-sm">识别身份</button>
+            </div>
+          </div>
+          <div id="databaseResultSummary" class="text-sm text-on-surface-variant mb-4">暂无结果图</div>
+          <div class="flex gap-2 text-xs mb-4">
+            <span id="databaseLibraryStatus"></span>
+            <span id="databaseLibraryTask" class="text-primary"></span>
+          </div>
+          <div id="databaseResultGrid" class="grid sm:grid-cols-2 gap-4"></div>
+        </div>
+    </section>
+  </div>
+</div>
+</div>

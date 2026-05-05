@@ -1,0 +1,137 @@
+<div id="tabDiagnostics" class="hidden">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-xl">
+  <div class="xl:col-span-12 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">任务队列诊断</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface">任务队列诊断</h2>
+                <p class="font-body-md text-on-surface-variant mt-2 text-sm max-w-3xl">只读查看 Worker 队列、健康检查和最近任务状态。用于判断 Web、SQLite 和 Worker 是否协同正常。</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 text-sm text-on-surface">
+                    <input id="diagAutoRefresh" type="checkbox" class="accent-primary" checked />
+                    自动刷新
+                </label>
+                <button id="diagRefreshBtn" type="button" onclick="refreshTaskQueueDiagnostics(this)" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint">刷新诊断</button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">队列总数</div>
+                <div id="diagQueueTotal" class="text-2xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">等待中</div>
+                <div id="diagQueuePending" class="text-2xl font-bold text-on-surface mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">运行中</div>
+                <div id="diagQueueRunning" class="text-2xl font-bold text-primary mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">失败</div>
+                <div id="diagQueueFailed" class="text-2xl font-bold text-error mt-1">--</div>
+            </div>
+            <div class="bg-surface-container-low p-4 rounded-xl">
+                <div class="text-xs text-on-surface-variant">陈旧运行</div>
+                <div id="diagQueueStale" class="text-2xl font-bold text-on-surface mt-1">--</div>
+            </div>
+        </div>
+
+        <div id="diagRemediation" class="hidden mt-6 bg-surface-variant p-4 rounded-xl text-sm"></div>
+    </section>
+  </div>
+
+  <div class="xl:col-span-5 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">系统健康</div>
+                <h3 class="font-headline-md text-headline-md text-on-surface">健康摘要</h3>
+            </div>
+            <span id="diag系统健康Badge" class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-xs border border-outline-variant">--</span>
+        </div>
+        <div id="diag系统健康Details" class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant overflow-auto max-h-64 whitespace-pre-wrap font-mono text-xs">等待刷新...</div>
+    </section>
+
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">分布统计</div>
+        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">分布统计</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <div class="text-xs font-bold text-on-surface-variant mb-2">按状态</div>
+                <div id="diagByStatus" class="space-y-2"></div>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-on-surface-variant mb-2">按类型 / 状态</div>
+                <div id="diagByTypeStatus" class="space-y-2"></div>
+            </div>
+        </div>
+    </section>
+  </div>
+
+  <div class="xl:col-span-7 space-y-xl">
+    <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
+            <div>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">近期队列任务</div>
+                <h3 class="font-headline-md text-headline-md text-on-surface">最近队列任务</h3>
+                <p id="diagLastRefresh" class="text-xs text-on-surface-variant mt-1">尚未刷新</p>
+            </div>
+            <div class="flex gap-2">
+                <div class="space-y-1">
+                    <label class="text-[10px] text-on-surface-variant">任务类型</label>
+                    <select id="diagTaskTypeFilter" class="bg-surface-container-low border-none rounded-lg text-xs py-1 px-2 focus:ring-0">
+                        <option value="">全部</option>
+                        <option value="detection">detection</option>
+                        <option value="upload">upload</option>
+                        <option value="train">train</option>
+                        <option value="auto_annotate">auto_annotate</option>
+                        <option value="face_library">face_library</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] text-on-surface-variant">状态</label>
+                    <select id="diagStatusFilter" class="bg-surface-container-low border-none rounded-lg text-xs py-1 px-2 focus:ring-0">
+                        <option value="">全部</option>
+                        <option value="pending">pending</option>
+                        <option value="running">running</option>
+                        <option value="completed">completed</option>
+                        <option value="failed">failed</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] text-on-surface-variant">数量</label>
+                    <select id="diagLimitFilter" class="bg-surface-container-low border-none rounded-lg text-xs py-1 px-2 focus:ring-0">
+                        <option value="30">30</option>
+                        <option value="60" selected>60</option>
+                        <option value="120">120</option>
+                        <option value="200">200</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-surface-container-low rounded-xl overflow-hidden border border-outline-variant">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-surface-variant text-on-surface-variant border-b border-outline-variant">
+                        <tr>
+                            <th class="p-3 font-bold">任务</th>
+                            <th class="p-3 font-bold">状态</th>
+                            <th class="p-3 font-bold">Job ID</th>
+                            <th class="p-3 font-bold">耗时</th>
+                            <th class="p-3 font-bold">Owner</th>
+                            <th class="p-3 font-bold">错误</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diagTaskRows" class="divide-y divide-outline-variant text-on-surface"></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+  </div>
+</div>
+</div>

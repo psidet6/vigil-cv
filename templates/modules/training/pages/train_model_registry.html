@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>模型管理</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/tailwind.css') }}" />
+</head>
+<body class="mr-editorial mr-train-page min-h-screen text-slate-900">
+  <div class="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
+    <header class="grid gap-4 xl:grid-cols-[1.4fr,0.9fr]">
+      <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-8">
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="{{ url_for('job.index') }}" class="mr-btn mr-btn--ghost">
+            返回首页
+          </a>
+        </div>
+        <div class="mt-5 text-xs font-semibold uppercase tracking-[0.35em] text-teal-600">模型管理</div>
+        <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900">模型管理与版本切换</h1>
+        <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-600">
+          这里分成两层管理。第一层是“部署位置”，决定当前哪个模型真正用于本地上传识别、数据库巡检通用识别和专项识别。
+          第二层是“模型注册信息”，用于标记一个模型的用途、状态、备注和显示名称。
+          一个模型可以同时具备多个用途，例如既是训练底模，也可以用于预标注或演示展示。
+        </p>
+      </section>
+
+      <section class="rounded-[32px] border border-slate-200/70 bg-slate-900 p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+        <div class="text-xs font-semibold uppercase tracking-[0.35em] text-sky-200">总体概况</div>
+        <div class="mt-5 space-y-4">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div class="text-sm text-slate-300">模型总数</div>
+            <div id="registryModelCount" class="mt-2 text-4xl font-semibold text-white">{{ models|length }}</div>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div class="text-sm text-slate-300">部署位置</div>
+            <div class="mt-2 text-4xl font-semibold text-white">{{ slots|length }}</div>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <div id="registryFeedback" class="hidden mt-6"></div>
+
+    <section class="mt-6 rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">部署位置</div>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">当前使用模型切换与回滚</h2>
+        </div>
+        <button id="registryRefreshBtn" type="button" class="mr-btn mr-btn--ghost">
+          刷新
+        </button>
+      </div>
+
+      <div id="slotCardGrid" class="mt-6 grid gap-4 lg:grid-cols-3"></div>
+    </section>
+
+    <section class="mt-6 rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">模型清单</div>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">模型列表与注册信息</h2>
+        </div>
+        <input id="modelSearchInput" type="text" placeholder="搜索模型名、数据集名、来源任务、用途、备注"
+          class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />
+      </div>
+
+      <div id="modelGrid" class="mt-6 grid gap-4 lg:grid-cols-2"></div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var state = {
+        models: {{ models | tojson }},
+        slots: {{ slots | tojson }},
+        registryOptions: {{ registry_options | tojson }},
+      };
+
+      function escapeHtml(value) {
+        return String(value == null ? '' : value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function formatTs(ts) {
+        if (!ts) return '--';
+        try {
+          return new Date(Number(ts) * 1000).toLocaleString('zh-CN');
+        } catch (e) {
+          return '--';
+        }
+      }
+
+      function setFeedback(message, tone) {
+        var box = document.getElementById('registryFeedback');
+        if (!box) return;
+        if (!message) {
+          box.className = 'hidden mt-6';
+          box.textContent = '';
+          return;
+        }
+        box.textContent = message;
+        box.className = 'mt-6 rounded-2xl border px-4 py-3 text-sm';
+        if (tone === 'error') {
+          box.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-700');
+        } else {
+          box.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+        }
+      }
+
+      function getLifecycleBadgeClass(lifecycle) {
+        if (lifecycle === 'archived') return 'bg-amber-50 text-amber-700 ring-amber-200';
+        if (lifecycle === 'disabled') return 'bg-rose-50 text-rose-700 ring-rose-200';
+        return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+      }
+
+      function renderSlotControls() {
+        var grid = document.getElementById('slotCardGrid');
+        if (!grid) return;
+        grid.innerHTML = state.slots.map(function (slot) {
+          var historyHtml = (slot.history && slot.history.length)
+            ? slot.history.map(function (item) {
+                return '<div class="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">' +
+                  '<div class="font-semibold text-slate-800">' + escapeHtml(item.model_name || '--') + '</div>' +
+                  '<div class="mt-1 text-slate-400">' + escapeHtml(formatTs(item.changed_ts)) + '</div>' +
+                '</div>';
+              }).join('')
+            : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-4 text-xs text-slate-500">暂无可回滚记录</div>';
+
+          var optionsHtml = state.models.map(function (model) {
+            var selected = model.name === slot.current_model ? ' selected' : '';
+            return '<option value="' + escapeHtml(model.name) + '"' + selected + '>' + escapeHtml(model.display_name || model.name) + '</option>';
+          }).join('');
+
+          return '' +
+            '<div class="mr-card mr-card--soft">' +
+              '<div class="flex items-start justify-between gap-3">' +
+                '<div>' +
+                  '<div class="text-sm font-semibold text-slate-900">' + escapeHtml(slot.label || slot.slot_key) + '</div>' +
+                  '<div class="mt-2 break-all font-mono text-xs text-slate-400">' + escapeHtml(slot.slot_key || '--') + '</div>' +
+                '</div>' +
+                '<span class="rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ' + (slot.has_override ? 'bg-teal-50 text-teal-700 ring-teal-200' : 'bg-slate-100 text-slate-600 ring-slate-200') + '">' +
+                  (slot.has_override ? '已覆盖' : '默认') +
+                '</span>' +
+              '</div>' +
+              '<div class="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">' +
+                '<div class="text-xs text-slate-400">当前启用模型</div>' +
+                '<div class="mt-2 break-all text-sm font-semibold text-slate-900">' + escapeHtml(slot.current_model || '--') + '</div>' +
+                '<div class="mt-2 break-all font-mono text-xs text-slate-500">' + escapeHtml(slot.current_path || '--') + '</div>' +
+              '</div>' +
+              '<div class="mt-4 space-y-3">' +
+                '<label class="block">' +
+                  '<span class="mb-2 block text-sm font-medium text-slate-700">切换到模型</span>' +
+                  '<select data-slot-select="' + escapeHtml(slot.slot_key) + '" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">' +
+                    optionsHtml +
+                  '</select>' +
+                '</label>' +
+                '<div class="flex gap-2">' +
+                  '<button type="button" data-slot-apply="' + escapeHtml(slot.slot_key) + '" class="mr-btn mr-btn--ink">应用切换</button>' +
+                  '<button type="button" data-slot-rollback="' + escapeHtml(slot.slot_key) + '" class="mr-btn mr-btn--ghost"' + ((slot.history && slot.history.length) ? '' : ' disabled') + '>回滚</button>' +
+                '</div>' +
+              '</div>' +
+              '<div class="mt-4">' +
+                '<div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">最近切换记录</div>' +
+                '<div class="mt-3 space-y-2">' + historyHtml + '</div>' +
+              '</div>' +
+            '</div>';
+        }).join('');
+
+        Array.from(document.querySelectorAll('[data-slot-apply]')).forEach(function (btn) {
+          btn.onclick = async function () {
+            var slotKey = btn.getAttribute('data-slot-apply');
+            var select = document.querySelector('[data-slot-select="' + slotKey + '"]');
+            if (!select || !select.value) {
+              setFeedback('请先选择一个目标模型。', 'error');
+              return;
+            }
+            btn.disabled = true;
+            try {
+              await updateSlot(slotKey, select.value);
+            } catch (err) {
+              setFeedback(err.message || '切换模型失败', 'error');
+            } finally {
+              btn.disabled = false;
+            }
+          };
+        });
+
+        Array.from(document.querySelectorAll('[data-slot-rollback]')).forEach(function (btn) {
+          btn.onclick = async function () {
+            var slotKey = btn.getAttribute('data-slot-rollback');
+            if (btn.disabled) return;
+            btn.disabled = true;
+            try {
+              await rollbackSlot(slotKey);
+            } catch (err) {
+              setFeedback(err.message || '回滚模型失败', 'error');
+            } finally {
+              btn.disabled = false;
+            }
+          };
+        });
+      }
+
+      function renderUsageCheckboxes(model) {
+        var options = (state.registryOptions && state.registryOptions.usage_options) || [];
+        return options.map(function (item) {
+          var checked = (model.usages || []).indexOf(item.value) >= 0 ? ' checked' : '';
+          return '<label class="mr-btn mr-btn--ghost">' +
+            '<input type="checkbox" data-model-usage="' + escapeHtml(item.value) + '" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"' + checked + ' />' +
+            '<span>' + escapeHtml(item.label) + '</span>' +
+          '</label>';
+        }).join('');
+      }
+
+      function renderModelGrid() {
+        var grid = document.getElementById('modelGrid');
+        if (!grid) return;
+
+        grid.innerHTML = state.models.map(function (model) {
+          var metric = model.metrics || {};
+          var slotBadges = (model.slot_labels || model.slot_refs || []).map(function (label) {
+            return '<span class="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 ring-1 ring-inset ring-teal-200">' + escapeHtml(label) + '</span>';
+          }).join('');
+          var usageBadges = (model.usage_labels || []).map(function (label) {
+            return '<span class="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-inset ring-sky-200">' + escapeHtml(label) + '</span>';
+          }).join('');
+          var lifecycleOptions = ((state.registryOptions && state.registryOptions.lifecycle_options) || []).map(function (item) {
+            var selected = item.value === model.lifecycle ? ' selected' : '';
+            return '<option value="' + escapeHtml(item.value) + '"' + selected + '>' + escapeHtml(item.label) + '</option>';
+          }).join('');
+
+          return '' +
+            '<article class="mr-card mr-card--soft" data-model-card="' + escapeHtml((model.name || '').toLowerCase()) + '">' +
+              '<div class="flex flex-wrap items-center gap-2">' +
+                '<div class="text-base font-semibold text-slate-900">' + escapeHtml(model.display_name || model.name || '--') + '</div>' +
+                '<span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">' + escapeHtml(model.category_label || model.category || '自定义模型') + '</span>' +
+                '<span class="rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ' + getLifecycleBadgeClass(model.lifecycle) + '">' + escapeHtml(model.lifecycle_label || model.lifecycle || '启用中') + '</span>' +
+                slotBadges +
+              '</div>' +
+              '<div class="mt-2 break-all font-mono text-xs text-slate-500">' + escapeHtml(model.name || '--') + '</div>' +
+              '<div class="mt-2 break-all font-mono text-xs text-slate-500">' + escapeHtml(model.path || '--') + '</div>' +
+              '<div class="mt-3 flex flex-wrap gap-2">' + usageBadges + '</div>' +
+              '<div class="mt-4 grid gap-3 sm:grid-cols-2">' +
+                '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3"><div class="text-xs text-slate-400">来源数据集</div><div class="mt-1 text-sm font-semibold text-slate-800">' + escapeHtml(model.dataset_name || '--') + '</div></div>' +
+                '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3"><div class="text-xs text-slate-400">训练底模</div><div class="mt-1 text-sm font-semibold text-slate-800">' + escapeHtml(model.base_model || '--') + '</div></div>' +
+                '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3"><div class="text-xs text-slate-400">查准率</div><div class="mt-1 text-sm font-semibold text-slate-800">' + escapeHtml(metric.precision || '--') + '</div></div>' +
+                '<div class="rounded-2xl border border-slate-200 bg-white px-4 py-3"><div class="text-xs text-slate-400">综合指标 mAP50</div><div class="mt-1 text-sm font-semibold text-slate-800">' + escapeHtml(metric.mAP50 || '--') + '</div></div>' +
+              '</div>' +
+              '<div class="mt-4 space-y-2 text-xs text-slate-500">' +
+                '<div>来源任务：' + escapeHtml(model.source_job_id || '--') + '</div>' +
+                '<div>仅已确认样本：' + escapeHtml(model.confirmed_only ? '是' : '否') + '</div>' +
+                '<div>元数据文件：' + escapeHtml(model.metadata_path || '--') + '</div>' +
+              '</div>' +
+              '<div class="mt-4 flex flex-wrap gap-2">' +
+                '<button type="button" class="mr-btn mr-btn--ghost" data-quick-slot="upload_default" data-model-name="' + escapeHtml(model.name || '') + '">设为上传默认模型</button>' +
+                '<button type="button" class="mr-btn mr-btn--ghost" data-quick-slot="general" data-model-name="' + escapeHtml(model.name || '') + '">设为通用巡检模型</button>' +
+                '<button type="button" class="mr-btn mr-btn--ghost" data-quick-slot="special" data-model-name="' + escapeHtml(model.name || '') + '">设为专项巡检模型</button>' +
+              '</div>' +
+              '<div class="mt-4 rounded-3xl border border-slate-200 bg-white p-4">' +
+                '<div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">注册信息</div>' +
+                '<div class="mt-3 grid gap-3 sm:grid-cols-2">' +
+                  '<label class="block">' +
+                    '<span class="mb-2 block text-sm font-medium text-slate-700">显示名称</span>' +
+                    '<input type="text" data-model-display-name value="' + escapeHtml(model.display_name || model.name || '') + '" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100" />' +
+                  '</label>' +
+                  '<label class="block">' +
+                    '<span class="mb-2 block text-sm font-medium text-slate-700">当前状态</span>' +
+                    '<select data-model-lifecycle class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">' + lifecycleOptions + '</select>' +
+                  '</label>' +
+                '</div>' +
+                '<div class="mt-3">' +
+                  '<div class="mb-2 text-sm font-medium text-slate-700">模型用途</div>' +
+                  '<div class="flex flex-wrap gap-2" data-model-usages>' + renderUsageCheckboxes(model) + '</div>' +
+                '</div>' +
+                '<label class="mt-3 block">' +
+                  '<span class="mb-2 block text-sm font-medium text-slate-700">备注</span>' +
+                  '<textarea rows="2" data-model-note class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">' + escapeHtml(model.note || '') + '</textarea>' +
+                '</label>' +
+                '<div class="mt-3 flex justify-end">' +
+                  '<button type="button" data-model-save="' + escapeHtml(model.name || '') + '" class="mr-btn mr-btn--ink">保存注册信息</button>' +
+                '</div>' +
+              '</div>' +
+            '</article>';
+        }).join('');
+
+        bindQuickSlotButtons();
+        bindMetadataButtons();
+      }
+
+      function renderModelHighlights() {
+        document.getElementById('registryModelCount').textContent = String(state.models.length || 0);
+        var search = (document.getElementById('modelSearchInput').value || '').trim().toLowerCase();
+        Array.from(document.querySelectorAll('[data-model-card]')).forEach(function (card) {
+          if (!search) {
+            card.classList.remove('hidden');
+            return;
+          }
+          var text = card.textContent.toLowerCase();
+          card.classList.toggle('hidden', text.indexOf(search) < 0);
+        });
+      }
+
+      function bindQuickSlotButtons() {
+        Array.from(document.querySelectorAll('[data-quick-slot]')).forEach(function (btn) {
+          btn.onclick = async function () {
+            var slotKey = btn.getAttribute('data-quick-slot');
+            var modelName = btn.getAttribute('data-model-name');
+            btn.disabled = true;
+            try {
+              await updateSlot(slotKey, modelName);
+            } catch (err) {
+              setFeedback(err.message || '切换模型失败', 'error');
+            } finally {
+              btn.disabled = false;
+            }
+          };
+        });
+      }
+
+      function collectModelMetadataPayload(modelName) {
+        var card = document.querySelector('[data-model-card="' + String(modelName || '').toLowerCase() + '"]');
+        if (!card) return null;
+        var displayName = card.querySelector('[data-model-display-name]');
+        var lifecycle = card.querySelector('[data-model-lifecycle]');
+        var note = card.querySelector('[data-model-note]');
+        var usages = Array.from(card.querySelectorAll('[data-model-usage]:checked')).map(function (el) {
+          return el.getAttribute('data-model-usage');
+        });
+        return {
+          display_name: displayName ? displayName.value : '',
+          lifecycle: lifecycle ? lifecycle.value : '',
+          usages: usages,
+          note: note ? note.value : '',
+        };
+      }
+
+      function bindMetadataButtons() {
+        Array.from(document.querySelectorAll('[data-model-save]')).forEach(function (btn) {
+          btn.onclick = async function () {
+            var modelName = btn.getAttribute('data-model-save');
+            var payload = collectModelMetadataPayload(modelName);
+            if (!payload) return;
+            btn.disabled = true;
+            try {
+              await updateModelMetadata(modelName, payload);
+            } catch (err) {
+              setFeedback(err.message || '保存模型注册信息失败', 'error');
+            } finally {
+              btn.disabled = false;
+            }
+          };
+        });
+      }
+
+      async function refreshRegistry() {
+        setFeedback('', '');
+        var resp = await fetch('/train/models');
+        var payload = await resp.json().catch(function () { return {}; });
+        if (!payload.ok || !resp.ok) {
+          throw new Error(payload.error || '刷新模型管理失败');
+        }
+        state.models = payload.models || [];
+        state.slots = payload.slots || [];
+        state.registryOptions = payload.registry_options || state.registryOptions || {};
+        renderSlotControls();
+        renderModelGrid();
+        renderModelHighlights();
+      }
+
+      async function updateSlot(slotKey, modelName) {
+        var resp = await fetch('/train/model-slots/' + encodeURIComponent(slotKey), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_name: modelName })
+        });
+        var payload = await resp.json().catch(function () { return {}; });
+        if (!payload.ok || !resp.ok) {
+          throw new Error(payload.error || '切换模型失败');
+        }
+        state.models = payload.models || state.models;
+        state.slots = state.slots.map(function (slot) {
+          return slot.slot_key === slotKey ? payload.slot : slot;
+        });
+        renderSlotControls();
+        renderModelGrid();
+        renderModelHighlights();
+        setFeedback(payload.message || '模型部署位置已更新。', 'success');
+      }
+
+      async function rollbackSlot(slotKey) {
+        var resp = await fetch('/train/model-slots/' + encodeURIComponent(slotKey) + '/rollback', {
+          method: 'POST'
+        });
+        var payload = await resp.json().catch(function () { return {}; });
+        if (!payload.ok || !resp.ok) {
+          throw new Error(payload.error || '回滚模型失败');
+        }
+        state.slots = state.slots.map(function (slot) {
+          return slot.slot_key === slotKey ? payload.slot : slot;
+        });
+        renderSlotControls();
+        renderModelGrid();
+        renderModelHighlights();
+        setFeedback(payload.message || '模型已回滚到上一版本。', 'success');
+      }
+
+      async function updateModelMetadata(modelName, metadata) {
+        var resp = await fetch('/train/models/' + encodeURIComponent(modelName) + '/metadata', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(metadata || {})
+        });
+        var payload = await resp.json().catch(function () { return {}; });
+        if (!payload.ok || !resp.ok) {
+          throw new Error(payload.error || '保存模型注册信息失败');
+        }
+        state.models = payload.models || state.models;
+        state.registryOptions = payload.registry_options || state.registryOptions || {};
+        renderSlotControls();
+        renderModelGrid();
+        renderModelHighlights();
+        setFeedback(payload.message || '模型注册信息已保存。', 'success');
+      }
+
+      document.getElementById('registryRefreshBtn').addEventListener('click', function () {
+        refreshRegistry().catch(function (err) {
+          setFeedback(err.message || '刷新模型管理失败', 'error');
+        });
+      });
+
+      document.getElementById('modelSearchInput').addEventListener('input', renderModelHighlights);
+
+      renderSlotControls();
+      renderModelGrid();
+      renderModelHighlights();
+    })();
+  </script>
+</body>
+</html>

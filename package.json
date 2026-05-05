@@ -1,0 +1,19 @@
+{
+  "name": "vigil-cv",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:css": "postcss static/src/tailwind.css -o static/dist/tailwind.css --env production",
+    "watch:css": "postcss static/src/tailwind.css -o static/dist/tailwind.css --watch"
+  },
+  "devDependencies": {
+    "autoprefixer": "10.4.21",
+    "postcss": "8.5.6",
+    "postcss-cli": "11.0.1",
+    "postcss-import": "16.1.1",
+    "tailwindcss": "3.4.17"
+  },
+  "browserslist": [
+    "Chrome >= 88"
+  ]
+}

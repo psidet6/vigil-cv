@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>任务详情</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/tailwind.css') }}" />
+  <script src="{{ url_for('static', filename='shared/js/auth.js') }}"></script>
+  <script>
+    const JOB_ID = {{ job_id|tojson }};
+    let DETAIL_STATE = { job: null, items: [], identitySummary: {}, library: null, loading: false };
+    let IMPORT_STATE = { assetIds: [], datasets: [], loading: false };
+
+    const STATUS_UI = {
+      queued: { label: '排队中', badge: 'bg-slate-100 text-slate-700 ring-slate-200' },
+      running: { label: '运行中', badge: 'bg-sky-100 text-sky-700 ring-sky-200' },
+      done: { label: '已完成', badge: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
+      error: { label: '失败', badge: 'bg-rose-100 text-rose-700 ring-rose-200' },
+      canceled: { label: '已取消', badge: 'bg-slate-200 text-slate-700 ring-slate-300' },
+      interrupted: { label: '已中断', badge: 'bg-amber-100 text-amber-700 ring-amber-200' }
+    };
+
+    const FACE_STATUS_UI = {
+      matched: { label: '已匹配', badge: 'bg-emerald-100 text-emerald-700 ring-emerald-200' },
+      no_match: { label: '无匹配', badge: 'bg-slate-100 text-slate-700 ring-slate-200' },
+      no_face: { label: '无人脸', badge: 'bg-amber-100 text-amber-700 ring-amber-200' },
+      low_quality: { label: '低质量', badge: 'bg-orange-100 text-orange-700 ring-orange-200' },
+      library_unavailable: { label: '人脸库未就绪', badge: 'bg-rose-100 text-rose-700 ring-rose-200' },
+      error: { label: '识别失败', badge: 'bg-rose-100 text-rose-700 ring-rose-200' }
+    };
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatBytes(size) {
+      const value = Number(size || 0);
+      if (!value) return '0 B';
+      if (value < 1024) return value + ' B';
+      if (value < 1024 * 1024) return (value / 1024).toFixed(1) + ' KB';
+      return (value / 1024 / 1024).toFixed(1) + ' MB';
+    }
+
+    function statusMeta(status) {
+      return STATUS_UI[status] || STATUS_UI.running;
+    }
+
+    function faceStatusMeta(status) {
+      return FACE_STATUS_UI[status] || FACE_STATUS_UI.no_match;
+    }
+
+    function modelDisplay(modelKey) {
+      const map = {
+        special: '专项场景模型',
+        general: '通用模型'
+      };
+      return map[modelKey] || modelKey || '未知模型';
+    }
+
+    function sourceDisplay(job) {
+      if (!job) return '--';
+      if (job.job_type === 'upload') {
+        return job.source_type === 'video' ? '本地上传 / 视频' : '本地上传 / ZIP';
+      }
+      return '数据库检测 / PostgreSQL';
+    }
+
+    function staleLibraryUnavailable(identity, library) {
+      return !!(identity && identity.status === 'library_unavailable' && library && library.ready);
+    }
+
+    function setImportFeedback(message, tone) {
+      const box = document.getElementById('importFeedback');
+      if (!box) return;
+      if (!message) {
+        box.className = 'hidden';
+        box.textContent = '';
+        return;
+      }
+      box.textContent = message;
+      box.className = 'rounded-2xl border px-4 py-3 text-sm';
+      if (tone === 'error') {
+        box.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-700');
+      } else {
+        box.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+      }
+    }
+
+    function renderLibraryPanel() {
+      const library = DETAIL_STATE.library;
+      const identitySummary = DETAIL_STATE.identitySummary || {};
+      const status = document.getElementById('libraryStatus');
+      const tips = document.getElementById('libraryTips');
+      const reidentifyBtn = document.getElementById('reidentifyAllBtn');
+      const importAllBtn = document.getElementById('importAllBtn');
+      if (!status || !tips || !reidentifyBtn || !importAllBtn) return;
+
+      if (!library) {
+        status.textContent = '正在读取人脸库状态...';
+        tips.textContent = '';
+        reidentifyBtn.disabled = true;
+        importAllBtn.disabled = true;
+        return;
+      }
+
+      status.textContent =
+        '人脸库：' + (library.ready ? '已就绪' : '未就绪') +
+        ' · 有效人员 ' + (library.valid_person_count || 0) +
+        ' · 底库照片 ' + (library.photo_count || 0) +
+        ' · 特征文件 ' + (library.feature_count || 0);
+
+      if (library.ready && identitySummary.library_unavailable_asset_count) {
+        tips.textContent = '这批历史结果中有部分是在“人脸库未就绪”时生成的旧识别记录。可以重新识别，也可以直接把结果图导入训练数据集。';
+      } else if (!library.ready) {
+        tips.textContent = '当前人脸库未就绪。重新识别前请先在首页同步人脸库并重建特征。';
+      } else {
+        tips.textContent = '当前页面展示的是已保存的识别结果，也可以把结果图回流到训练数据集。';
+      }
+
+      reidentifyBtn.disabled = !library.ready || DETAIL_STATE.loading || !DETAIL_STATE.items.length;
+      reidentifyBtn.textContent = DETAIL_STATE.loading ? '重新识别中...' : '重新识别全部结果图';
+      importAllBtn.disabled = !DETAIL_STATE.items.length || IMPORT_STATE.loading;
+    }
+
+    function renderJob() {
+      const job = DETAIL_STATE.job || {};
+      const identitySummary = DETAIL_STATE.identitySummary || {};
+      const meta = statusMeta(job.status);
+      document.getElementById('jobId').textContent = job.id || '';
+      document.getElementById('jobStatus').className = 'inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ' + meta.badge;
+      document.getElementById('jobStatus').textContent = meta.label;
+      document.getElementById('jobSource').textContent = sourceDisplay(job);
+      document.getElementById('jobModel').textContent = modelDisplay(job.model_key);
+      document.getElementById('jobTime').textContent = (job.start_ts || '-') + ' 至 ' + (job.end_ts || '进行中');
+      document.getElementById('jobSummary').textContent = job.summary_text || job.message || '暂无摘要';
+      document.getElementById('jobCounts').textContent =
+        '保留 ' + (job.kept || 0) + ' / 总数 ' + (job.total || 0) +
+        ' / 失败 ' + (job.failed || 0) +
+        ' / 下载成功 ' + (job.downloaded || 0);
+      document.getElementById('jobFaces').textContent =
+        '已识别 ' + (identitySummary.recognized_asset_count || 0) + ' 张，命中 ' + (identitySummary.matched_asset_count || 0) +
+        ' 张，检测到人脸 ' + (identitySummary.total_face_count || 0) + ' 张';
+
+      const actions = document.getElementById('jobActions');
+      const buttons = [];
+      if (job.status === 'done' && job.download_url) {
+        buttons.push('<a class="mr-btn mr-btn--ink" href="' + job.download_url + '" target="_blank">下载结果 ZIP</a>');
+      }
+      if (job.summary_url) {
+        buttons.push('<a class="mr-btn mr-btn--ghost" href="' + job.summary_url + '" target="_blank">下载摘要</a>');
+      }
+      (job.download_parts || []).forEach(function (part) {
+        buttons.push('<a class="mr-btn mr-btn--ghost" href="' + part.url + '" target="_blank">' + escapeHtml(part.name) + '</a>');
+      });
+      actions.innerHTML = buttons.join('');
+    }
+
+    function renderResults() {
+      const items = DETAIL_STATE.items || [];
+      const library = DETAIL_STATE.library;
+      const root = document.getElementById('resultGrid');
+      const empty = document.getElementById('resultEmpty');
+      if (!root || !empty) return;
+
+      if (!items.length) {
+        root.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      root.innerHTML = items.map(function (item) {
+        const identity = item.identity || null;
+        let statusHtml = '<div class="text-xs text-slate-400">尚未执行身份识别</div>';
+        let detailHtml = '<div class="mt-2 text-xs text-slate-500">文件大小：' + formatBytes(item.size_bytes) + '</div>';
+        let facesHtml = '';
+
+        if (identity) {
+          const isStale = staleLibraryUnavailable(identity, library);
+          const meta = isStale
+            ? { label: '建议重新识别', badge: 'bg-amber-100 text-amber-700 ring-amber-200' }
+            : faceStatusMeta(identity.status);
+          statusHtml = '<span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ' + meta.badge + '">' + meta.label + '</span>';
+
+          if (identity.status === 'matched' && identity.faces && identity.faces[0] && identity.faces[0].top_matches && identity.faces[0].top_matches[0]) {
+            const top = identity.faces[0].top_matches[0];
+            detailHtml += '<div class="mt-2 text-xs leading-5 text-emerald-700">命中：' + escapeHtml(top.name || '') + ' / ' + escapeHtml(top.id_number || '') + ' / 相似度 ' + escapeHtml(top.score || '') + '</div>';
+          } else if (isStale) {
+            detailHtml += '<div class="mt-2 text-xs leading-5 text-amber-700">这张图片的识别记录是在旧的人脸库状态下生成的，建议重新识别。</div>';
+          } else if (identity.error) {
+            detailHtml += '<div class="mt-2 text-xs leading-5 text-rose-600">' + escapeHtml(identity.error) + '</div>';
+          } else {
+            detailHtml += '<div class="mt-2 text-xs leading-5 text-slate-500">检测到人脸 ' + escapeHtml(identity.face_count || 0) + ' 张</div>';
+          }
+
+          facesHtml = (identity.faces || []).map(function (face, index) {
+            const faceMeta = faceStatusMeta(face.status || identity.status);
+            const matches = face.top_matches || [];
+            const similarityScore = matches.length && matches[0].score ? matches[0].score : '-';
+            const matchesHtml = matches.length ? matches.map(function (match) {
+              const photoHtml = match.photo_url
+                ? '<img src="' + match.photo_url + '" alt="' + escapeHtml(match.name || '') + '" class="h-12 w-12 rounded-2xl object-cover ring-1 ring-inset ring-slate-200" />'
+                : '';
+              return (
+                '<div class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3">' +
+                  photoHtml +
+                  '<div class="min-w-0 flex-1">' +
+                    '<div class="truncate text-sm font-semibold text-slate-800">' + escapeHtml(match.name || '') + '</div>' +
+                    '<div class="truncate text-xs text-slate-500">' + escapeHtml(match.id_number || '') + '</div>' +
+                  '</div>' +
+                  '<div class="text-right text-xs font-semibold text-slate-500">检测分 ' + escapeHtml(face.det_score || '-') + '</div>' +
+                '</div>'
+              );
+            }).join('') : '<div class="mr-card mr-card--soft">该人脸暂无匹配结果。</div>';
+
+            return (
+              '<div class="mr-card mr-card--soft">' +
+                '<div class="flex flex-wrap items-center justify-between gap-3">' +
+                  '<div class="text-sm font-semibold text-slate-800">人脸 ' + (index + 1) + '</div>' +
+                  '<span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ' + faceMeta.badge + '">' + faceMeta.label + '</span>' +
+                '</div>' +
+                '<div class="mt-2 text-xs leading-6 text-slate-500">框：' + escapeHtml((face.bbox || []).join(', ')) + ' · 相似度 ' + escapeHtml(similarityScore) + ' · 清晰度 ' + escapeHtml(face.blur_score || '') + ' · 对齐 ' + (face.used_align ? '是' : '否') + '</div>' +
+                '<div class="mt-3 space-y-3">' + matchesHtml + '</div>' +
+              '</div>'
+            );
+          }).join('');
+        }
+
+        return (
+          '<div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">' +
+            '<a class="block" href="' + item.asset_url + '" target="_blank">' +
+              '<img src="' + item.asset_url + '" alt="' + escapeHtml(item.name) + '" class="h-48 w-full bg-slate-100 object-cover" />' +
+            '</a>' +
+            '<div class="p-4">' +
+              '<div class="truncate text-sm font-semibold text-slate-800">' + escapeHtml(item.origin_name || item.name) + '</div>' +
+              '<div class="mt-1 text-xs text-slate-400">' + escapeHtml(item.name) + '</div>' +
+              '<div class="mt-3 flex flex-wrap gap-2">' +
+                statusHtml +
+                '<button type="button" onclick="openImportDrawer([\'' + encodeURIComponent(item.id) + '\'])" class="rounded-full border border-teal-200 bg-white px-3 py-1.5 text-xs font-semibold text-teal-700 transition hover:bg-teal-50">加入数据集</button>' +
+              '</div>' +
+              detailHtml +
+              facesHtml +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function rerunIdentifyAll() {
+      if (!DETAIL_STATE.library || !DETAIL_STATE.library.ready) {
+        alert('当前人脸库未就绪，请先在首页同步人脸库并重建特征。');
+        return;
+      }
+      if (!DETAIL_STATE.items.length) {
+        alert('当前任务没有可重新识别的结果图。');
+        return;
+      }
+      DETAIL_STATE.loading = true;
+      renderLibraryPanel();
+      fetch('/face/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: JOB_ID,
+          asset_ids: DETAIL_STATE.items.map(function (item) { return item.id; }),
+          top_k: 5
+        })
+      })
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          DETAIL_STATE.loading = false;
+          if (!data.ok) {
+            renderLibraryPanel();
+            alert(data.error || '重新识别失败');
+            return;
+          }
+          loadDetail();
+        })
+        .catch(function () {
+          DETAIL_STATE.loading = false;
+          renderLibraryPanel();
+          alert('重新识别请求失败，请稍后重试。');
+        });
+    }
+
+    function closeImportDrawer() {
+      IMPORT_STATE.assetIds = [];
+      IMPORT_STATE.loading = false;
+      const overlay = document.getElementById('importOverlay');
+      const drawer = document.getElementById('importDrawer');
+      if (overlay) overlay.classList.add('hidden');
+      if (drawer) drawer.classList.add('translate-x-full');
+      setImportFeedback('', '');
+    }
+
+    function renderDatasetOptions() {
+      const select = document.getElementById('importDatasetSelect');
+      const submitBtn = document.getElementById('importSubmitBtn');
+      if (!select || !submitBtn) return;
+      if (!IMPORT_STATE.datasets.length) {
+        select.innerHTML = '<option value="">请先在首页创建数据集</option>';
+        select.disabled = true;
+        submitBtn.disabled = true;
+        return;
+      }
+      select.innerHTML = IMPORT_STATE.datasets.map(function (item) {
+        return '<option value="' + escapeHtml(item.id || '') + '">' + escapeHtml(item.name || item.id || '') + '</option>';
+      }).join('');
+      select.disabled = false;
+      submitBtn.disabled = IMPORT_STATE.loading;
+    }
+
+    function openImportDrawer(encodedAssetIds) {
+      IMPORT_STATE.assetIds = (encodedAssetIds || []).map(function (id) { return decodeURIComponent(id); });
+      setImportFeedback('', '');
+      document.getElementById('importTitle').textContent =
+        IMPORT_STATE.assetIds.length > 1 ? '批量导入结果图' : '导入当前结果图';
+      document.getElementById('importMeta').textContent =
+        '当前任务：' + JOB_ID + ' · 已选择 ' + IMPORT_STATE.assetIds.length + ' 张结果图';
+
+      const overlay = document.getElementById('importOverlay');
+      const drawer = document.getElementById('importDrawer');
+      if (overlay) overlay.classList.remove('hidden');
+      if (drawer) drawer.classList.remove('translate-x-full');
+
+      fetch('/train/datasets')
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            throw new Error(data.error || '加载数据集失败');
+          }
+          IMPORT_STATE.datasets = data.items || [];
+          renderDatasetOptions();
+        })
+        .catch(function (err) {
+          IMPORT_STATE.datasets = [];
+          renderDatasetOptions();
+          setImportFeedback(err.message || '加载数据集失败', 'error');
+        });
+    }
+
+    function importAllResults() {
+      if (!DETAIL_STATE.items.length) {
+        alert('当前任务没有可导入的结果图。');
+        return;
+      }
+      openImportDrawer(DETAIL_STATE.items.map(function (item) { return encodeURIComponent(item.id); }));
+    }
+
+    function submitImport() {
+      const select = document.getElementById('importDatasetSelect');
+      if (!select || !select.value) {
+        setImportFeedback('请先选择一个目标数据集。', 'error');
+        return;
+      }
+      if (!IMPORT_STATE.assetIds.length) {
+        setImportFeedback('当前没有可导入的结果图。', 'error');
+        return;
+      }
+
+      IMPORT_STATE.loading = true;
+      renderDatasetOptions();
+      setImportFeedback('', '');
+
+      fetch('/train/datasets/' + encodeURIComponent(select.value) + '/import-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: JOB_ID,
+          asset_ids: IMPORT_STATE.assetIds
+        })
+      })
+        .then(function (resp) {
+          return resp.text().then(function (text) {
+            let data = {};
+            try {
+              data = text ? JSON.parse(text) : {};
+            } catch (e) {
+              data = {};
+            }
+            data.__http_ok = resp.ok;
+            return data;
+          });
+        })
+        .then(function (data) {
+          if (!data.ok || data.__http_ok === false) {
+            throw new Error(data.error || '导入失败');
+          }
+          setImportFeedback(data.message || '结果图已导入数据集。', 'success');
+          window.setTimeout(function () {
+            closeImportDrawer();
+          }, 700);
+        })
+        .catch(function (err) {
+          setImportFeedback(err.message || '结果图导入失败', 'error');
+        })
+        .finally(function () {
+          IMPORT_STATE.loading = false;
+          renderDatasetOptions();
+        });
+    }
+
+    function loadDetail() {
+      fetch('{{ url_for("job.history_detail", job_id=job_id) }}')
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          if (!data.ok) {
+            document.getElementById('errorBox').classList.remove('hidden');
+            document.getElementById('errorText').textContent = data.error || '加载失败';
+            return;
+          }
+          DETAIL_STATE = {
+            job: data.job || {},
+            items: data.items || [],
+            identitySummary: data.identity_summary || {},
+            library: data.library || null,
+            loading: false
+          };
+          renderJob();
+          renderLibraryPanel();
+          renderResults();
+        })
+        .catch(function () {
+          document.getElementById('errorBox').classList.remove('hidden');
+          document.getElementById('errorText').textContent = '加载详情失败，请稍后重试。';
+        });
+    }
+
+    window.addEventListener('load', loadDetail);
+  </script>
+</head>
+<body class="mr-editorial mr-history-page min-h-screen text-slate-900">
+  <div class="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
+    <header class="mb-8 grid gap-4 xl:grid-cols-[1.35fr,1fr]">
+      <section class="rounded-[32px] border border-white/70 bg-white/85 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-8">
+        <div class="text-xs font-semibold uppercase tracking-[0.35em] text-sky-600">Detail</div>
+        <h1 class="mt-4 text-3xl font-semibold tracking-tight text-slate-900 md:text-4xl">任务详情</h1>
+        <p class="mt-4 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">
+          这里会展示任务基础信息、结果下载入口、身份识别摘要，以及每一张结果图的识别记录。
+          现在也支持把历史任务结果图直接回流到训练数据集。
+        </p>
+      </section>
+
+      <section class="rounded-[32px] border border-slate-200/70 bg-slate-900 p-6 text-white shadow-[0_24px_60px_rgba(15,23,42,0.18)]">
+        <div class="text-xs font-semibold uppercase tracking-[0.35em] text-sky-200">Task</div>
+        <div class="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div class="text-sm text-slate-300">任务 ID</div>
+          <div id="jobId" class="mt-2 break-all text-lg font-semibold text-white"></div>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <a href="{{ url_for('job.history_page') }}" class="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">返回历史</a>
+          <a href="{{ url_for('job.index') }}" class="inline-flex items-center justify-center rounded-full border border-white/20 bg-transparent px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10">返回首页</a>
+        </div>
+      </section>
+    </header>
+
+    <div id="errorBox" class="mb-6 hidden rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+      <span id="errorText"></span>
+    </div>
+
+    <section class="rounded-[32px] border border-white/70 bg-white/85 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-6">
+      <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Overview</div>
+          <h2 class="mt-2 text-xl font-semibold text-slate-900">任务概览</h2>
+        </div>
+        <span id="jobStatus" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset bg-slate-100 text-slate-700 ring-slate-200">加载中</span>
+      </div>
+
+      <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="mr-card mr-card--soft">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">来源</div>
+          <div id="jobSource" class="mt-2 text-sm font-semibold text-slate-800"></div>
+        </div>
+        <div class="mr-card mr-card--soft">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">模型</div>
+          <div id="jobModel" class="mt-2 text-sm font-semibold text-slate-800"></div>
+        </div>
+        <div class="mr-card mr-card--soft">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">时间</div>
+          <div id="jobTime" class="mt-2 text-sm font-semibold text-slate-800"></div>
+        </div>
+        <div class="mr-card mr-card--soft">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">识别摘要</div>
+          <div id="jobFaces" class="mt-2 text-sm font-semibold text-slate-800"></div>
+        </div>
+      </div>
+
+      <div class="mt-5 grid gap-4 xl:grid-cols-[1.2fr,1fr]">
+        <div class="rounded-3xl border border-slate-200 bg-white p-5">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">任务统计</div>
+          <div id="jobCounts" class="mt-3 text-sm leading-7 text-slate-700"></div>
+          <div class="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">任务摘要</div>
+          <pre id="jobSummary" class="mt-3 whitespace-pre-wrap rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-600"></pre>
+        </div>
+        <div class="rounded-3xl border border-slate-200 bg-white p-5">
+          <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">下载与导出</div>
+          <div id="jobActions" class="mt-4 flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-6 rounded-[32px] border border-white/70 bg-white/85 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Face Library</div>
+          <h2 class="mt-2 text-xl font-semibold text-slate-900">当前人脸库状态</h2>
+          <div id="libraryStatus" class="mt-3 text-sm leading-7 text-slate-700">正在读取人脸库状态...</div>
+          <div id="libraryTips" class="mt-2 text-sm leading-7 text-slate-500"></div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="importAllBtn" type="button" onclick="importAllResults()" class="inline-flex items-center justify-center rounded-full border border-teal-200 bg-white px-5 py-3 text-sm font-semibold text-teal-700 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400">全部加入数据集</button>
+          <button id="reidentifyAllBtn" type="button" onclick="rerunIdentifyAll()" class="mr-btn mr-btn--ink">重新识别全部结果图</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-6 rounded-[32px] border border-white/70 bg-white/85 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur md:p-6">
+      <div class="flex items-end justify-between gap-4 border-b border-slate-100 pb-5">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-400">Results</div>
+          <h2 class="mt-2 text-xl font-semibold text-slate-900">结果图与识别记录</h2>
+        </div>
+      </div>
+
+      <div id="resultGrid" class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"></div>
+      <div id="resultEmpty" class="mt-6 hidden rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center text-sm text-slate-500">
+        当前任务没有可展示的结果图。
+      </div>
+    </section>
+  </div>
+
+  <div id="importOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/35 backdrop-blur-[1px]" onclick="closeImportDrawer()"></div>
+  <aside id="importDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md translate-x-full overflow-y-auto border-l border-white/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Add To Dataset</div>
+        <h3 id="importTitle" class="mt-2 text-lg font-semibold text-slate-900">导入结果图</h3>
+      </div>
+      <button type="button" onclick="closeImportDrawer()" class="mr-btn mr-btn--ghost">关闭</button>
+    </div>
+    <div class="space-y-5 px-5 py-5">
+      <div class="mr-card mr-card--soft">
+        <div id="importMeta" class="text-sm leading-7 text-slate-600">当前没有可导入的结果图。</div>
+      </div>
+      <label class="block">
+        <span class="mb-2 block text-sm font-medium text-slate-700">目标数据集</span>
+        <select id="importDatasetSelect" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+          <option value="">请先在首页创建数据集</option>
+        </select>
+      </label>
+      <div class="mr-card mr-card--soft">
+        导入后会把结果图复制到训练数据集的 <code class="rounded bg-white px-2 py-1 text-xs text-slate-700">images</code> 目录，用于后续标注和训练，不会影响原有任务记录。
+      </div>
+      <div id="importFeedback" class="hidden"></div>
+      <div class="flex flex-wrap justify-end gap-2">
+        <a href="{{ url_for('job.index') }}" class="mr-btn mr-btn--ghost">前往首页</a>
+        <button id="importSubmitBtn" type="button" onclick="submitImport()" class="mr-btn mr-btn--ink">确认导入</button>
+      </div>
+    </div>
+  </aside>
+</body>
+</html>

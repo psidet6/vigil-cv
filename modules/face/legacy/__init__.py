@@ -1,0 +1,1 @@
+"""Legacy face scripts package."""

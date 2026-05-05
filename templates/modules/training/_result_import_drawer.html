@@ -1,0 +1,32 @@
+﻿  <div id="resultImportOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/35 backdrop-blur-[1px]" onclick="closeResultImportModal()"></div>
+  <aside id="resultImportDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md translate-x-full overflow-y-auto border-l border-white/60 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)] transition-transform duration-300">
+    <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Add To Dataset</div>
+        <h3 class="mt-2 text-lg font-semibold text-slate-900">导入检测结果图</h3>
+      </div>
+      <button type="button" onclick="closeResultImportModal()" class="mr-btn mr-btn--ghost">关闭</button>
+    </div>
+    <div class="space-y-5 px-5 py-5">
+      <div class="mr-card mr-card--soft">
+        <div id="resultImportTitle" class="text-sm font-semibold text-slate-900">未选择结果图</div>
+        <div id="resultImportMeta" class="mt-2 text-sm leading-6 text-slate-500">请选择结果图后再导入数据集。</div>
+      </div>
+      <label class="block">
+        <span class="mb-2 block text-sm font-medium text-slate-700">目标数据集</span>
+        <select id="resultImportDatasetSelect" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100">
+          <option value="">请先创建数据集</option>
+        </select>
+      </label>
+      <div class="mr-card mr-card--soft">
+        当前会把结果图复制到数据集的 <code class="rounded bg-white px-2 py-1 text-xs text-slate-700">images</code> 目录，
+        便于后续做标注和训练，不会影响原有任务结果。
+      </div>
+      <div id="resultImportFeedback" class="hidden"></div>
+      <div class="flex flex-wrap justify-end gap-2">
+        <button type="button" onclick="switchTab('Train'); closeResultImportModal();" class="mr-btn mr-btn--ghost">前往训练页</button>
+        <button id="resultImportSubmitBtn" type="button" onclick="submitResultImport()" class="mr-btn mr-btn--ink">确认导入</button>
+      </div>
+    </div>
+  </aside>
+

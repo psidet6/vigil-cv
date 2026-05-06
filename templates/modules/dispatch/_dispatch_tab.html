@@ -4,24 +4,24 @@
     <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
         <div class="flex justify-between items-start mb-4">
             <div>
-                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">任务平台认证</div>
-                <h2 class="font-headline-md text-headline-md text-on-surface">任务平台认证</h2>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">外部平台认证</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface">外部平台认证</h2>
             </div>
             <span id="dispatchAuthStatusBadge" class="bg-surface-variant text-on-surface-variant px-3 py-1 rounded-full text-xs border border-outline-variant">未认证</span>
         </div>
-        <p class="font-body-md text-on-surface-variant mb-6 text-sm">先使用外部任务平台账号完成认证，系统会缓存当前登录状态。认证通过后，待下发对象即可直接生成任务草稿并发送到平台。</p>
-        
-        <div id="dispatchAuthStatusText" class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant mb-6">当前尚未连接任务平台，请先输入账号和密码。</div>
-        
+        <p class="font-body-md text-on-surface-variant mb-6 text-sm">先使用外部平台账号完成认证，系统会缓存当前登录状态。认证通过后，待推送对象即可直接生成任务草稿并发送到平台。</p>
+
+        <div id="dispatchAuthStatusText" class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant mb-6">当前尚未连接外部平台，请先输入账号和密码。</div>
+
         <form id="dispatchAuthForm" onsubmit="return authenticateDispatch(event)" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-base">
                     <label class="font-label-sm text-on-surface block">平台账号</label>
-                    <input id="dispatchUsername" type="text" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="请输入任务平台账号" />
+                    <input id="dispatchUsername" type="text" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="请输入平台账号" />
                 </div>
                 <div class="space-y-base">
                     <label class="font-label-sm text-on-surface block">平台密码</label>
-                    <input id="dispatchPassword" type="password" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="请输入任务平台密码" />
+                    <input id="dispatchPassword" type="password" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" placeholder="请输入平台密码" />
                 </div>
             </div>
             <div class="flex justify-end gap-3 pt-4 border-t border-outline-variant">
@@ -34,30 +34,30 @@
     <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
         <div class="flex justify-between items-start mb-4">
             <div>
-                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">待下发队列</div>
-                <h2 class="font-headline-md text-headline-md text-on-surface">待下发对象</h2>
+                <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">待推送队列</div>
+                <h2 class="font-headline-md text-headline-md text-on-surface">待推送对象</h2>
             </div>
             <div class="flex gap-2">
                 <button type="button" onclick="refreshDispatchQueue()" class="bg-surface-variant px-3 py-1 rounded-lg text-sm">刷新显示</button>
-                <button type="button" onclick="refreshDispatchRegionContext()" class="bg-surface-variant text-primary border border-primary px-3 py-1 rounded-lg text-sm">重查属地</button>
+                <button type="button" onclick="refreshDispatchRegionContext()" class="bg-surface-variant text-primary border border-primary px-3 py-1 rounded-lg text-sm">重查归属</button>
             </div>
         </div>
-        <p class="font-body-md text-on-surface-variant mb-6 text-sm">人脸识别命中后，人员会自动流转到此处。支持多选后统一生成任务、编辑参数、通过平台下发，或发送短信提醒。</p>
+        <p class="font-body-md text-on-surface-variant mb-6 text-sm">人脸识别命中后，人员会自动流转到此处。支持多选后统一生成任务、编辑参数、通过平台推送，或发送短信提醒。</p>
 
         <div class="bg-surface-container-low p-4 rounded-xl mb-4 text-sm text-on-surface-variant">
             <h3 class="font-bold text-on-surface mb-2">自动流转说明</h3>
             <ol class="list-decimal list-inside space-y-1">
                 <li>人脸识别命中后自动进入队列。</li>
-                <li>依据人员编号补全属地、联系方式和任务草稿。</li>
-                <li>用户可修改 payload 后再通过平台下发。</li>
-                <li>下发完成后可同步保留短信提醒记录。</li>
+                <li>依据人员编号补全归属、联系方式和任务草稿。</li>
+                <li>用户可修改 payload 后再通过平台推送。</li>
+                <li>推送完成后可同步保留短信提醒记录。</li>
             </ol>
         </div>
 
         <div class="bg-surface-container-low p-4 rounded-xl">
-            <div id="dispatchQueueSummary" class="text-sm text-on-surface-variant font-bold mb-4">正在读取待下发队列...</div>
+            <div id="dispatchQueueSummary" class="text-sm text-on-surface-variant font-bold mb-4">正在读取待推送队列...</div>
             <div id="dispatchQueueList" class="space-y-4">
-                <div class="border border-dashed border-outline-variant p-6 text-center text-sm text-on-surface-variant rounded-xl">正在读取待下发对象...</div>
+                <div class="border border-dashed border-outline-variant p-6 text-center text-sm text-on-surface-variant rounded-xl">正在读取待推送对象...</div>
             </div>
         </div>
     </section>
@@ -65,9 +65,9 @@
 
   <div class="xl:col-span-6 space-y-xl">
     <section class="bg-surface ring-1 ring-[#e8e6dc] rounded-[24px] p-lg shadow-sm">
-        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">任务下发草稿</div>
-        <h2 class="font-headline-md text-headline-md text-on-surface mb-2">任务平台下发配置</h2>
-        <div id="dispatchSelectedHint" class="text-sm text-on-surface-variant mb-6">请选择左侧待下发对象后，再编辑任务内容和下发草稿。</div>
+        <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">任务推送草稿</div>
+        <h2 class="font-headline-md text-headline-md text-on-surface mb-2">外部平台推送配置</h2>
+        <div id="dispatchSelectedHint" class="text-sm text-on-surface-variant mb-6">请选择左侧待推送对象后，再编辑任务内容和推送草稿。</div>
 
         <div class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
@@ -86,7 +86,7 @@
                     <label class="font-label-sm text-on-surface block">负责人电话</label>
                     <input id="dispatchManagerPhone" type="text" oninput="renderDispatchSmsLocally()" class="w-full bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-0 py-sm" />
                 </div>
-                <div class="bg-surface-container-low p-3 rounded-lg text-xs text-on-surface-variant">默认会自动补全层级单位和地址信息。点击“重查属地”可根据人员编号重新拉取属地信息。</div>
+                <div class="bg-surface-container-low p-3 rounded-lg text-xs text-on-surface-variant">默认会自动补全层级单位和地址信息。点击“重查归属”可根据人员编号重新拉取归属信息。</div>
             </div>
 
             <div class="space-y-base">
@@ -135,14 +135,14 @@
 
             <div class="bg-surface-variant border border-outline-variant rounded-xl overflow-hidden mt-4">
                 <div class="bg-inverse-surface text-inverse-on-surface text-xs p-3 font-semibold tracking-widest uppercase">负载编辑区</div>
-                <textarea id="dispatchPayloadEditor" rows="6" class="w-full bg-surface-variant border-none text-xs font-mono p-4 outline-none focus:ring-0 text-on-surface">请选择左侧待下发对象后生成 payload 预览</textarea>
+                <textarea id="dispatchPayloadEditor" rows="6" class="w-full bg-surface-variant border-none text-xs font-mono p-4 outline-none focus:ring-0 text-on-surface">请选择左侧待推送对象后生成 payload 预览</textarea>
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 pt-4">
                 <button type="button" onclick="restoreDispatchMinimalPayload()" class="bg-surface-variant border border-primary text-primary px-4 py-2 rounded-lg text-sm">恢复精简默认</button>
                 <button type="button" onclick="formatDispatchPayloadEditor()" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">格式化 JSON</button>
                 <button type="button" onclick="previewDispatchPayload()" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">重新生成草稿</button>
-                <button type="button" onclick="sendDispatchTasks()" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm">通过任务平台下发</button>
+                <button type="button" onclick="sendDispatchTasks()" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm">通过外部平台推送</button>
             </div>
         </div>
     </section>
@@ -161,7 +161,7 @@
             </div>
             <div class="bg-surface-container-low p-4 rounded-xl text-sm text-on-surface-variant">
                 <strong class="text-primary block text-xs uppercase tracking-widest mb-2">实时预览</strong>
-                <div id="dispatchSmsPreviewText">请选择左侧待下发对象后预览短信内容</div>
+                <div id="dispatchSmsPreviewText">请选择左侧待推送对象后预览短信内容</div>
             </div>
             <div class="flex justify-end gap-3 pt-4">
                 <button type="button" onclick="previewDispatchSms()" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">预览短信</button>
@@ -174,7 +174,7 @@
         <div class="flex justify-between items-start mb-4">
             <div>
                 <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">审计记录</div>
-                <h2 class="font-headline-md text-headline-md text-on-surface">下发记录与短信记录</h2>
+                <h2 class="font-headline-md text-headline-md text-on-surface">推送记录与短信记录</h2>
             </div>
             <button type="button" onclick="refreshDispatchTab()" class="bg-surface-variant px-4 py-2 rounded-lg text-sm">刷新记录</button>
         </div>

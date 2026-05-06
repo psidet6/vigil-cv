@@ -37,14 +37,14 @@ def _queue_id(owner_key: str, job_id: str, asset_id: str, face_index: int, perso
 
 def _guess_illegal_type(job: dict | None) -> str:
     if not job:
-        return "风险事件待确认"
+        return "事件待确认"
     model_key = str(job.get("model_key") or "").strip().lower()
     source_name = str(job.get("source_name") or "").strip()
     if model_key == "special":
-        return "专项风险事件"
+        return "专项事件"
     if source_name:
         return source_name
-    return "风险事件待确认"
+    return "事件待确认"
 
 
 def _region_context_from_db(person_id_no: str) -> dict[str, str]:
@@ -71,14 +71,14 @@ def _build_source_summary(job: dict | None, asset_name: str, similarity_score: f
 
 
 def _default_title(illegal_type: str) -> str:
-    if illegal_type and illegal_type != "风险事件待确认":
-        return f"{illegal_type}人员核查任务"
+    if illegal_type and illegal_type != "事件待确认":
+        return f"{illegal_type}相关复核任务"
     return DISPATCH_DEFAULT_TITLE
 
 
 def _default_content(illegal_type: str) -> str:
-    if illegal_type and illegal_type != "风险事件待确认":
-        return f"请核查该对象近期涉嫌“{illegal_type}”，并反馈处置情况。"
+    if illegal_type and illegal_type != "事件待确认":
+        return f"请复核该对象近期涉及的“{illegal_type}”，并反馈处理情况。"
     return DISPATCH_DEFAULT_CONTENT
 
 

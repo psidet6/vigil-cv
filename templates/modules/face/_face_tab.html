@@ -5,7 +5,7 @@
             <div>
                 <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">人脸库状态</div>
                 <h2 class="font-headline-md text-headline-md text-on-surface">人脸库状态</h2>
-                <p class="font-body-md text-on-surface-variant mt-2 max-w-2xl text-sm">管理本地人脸识别底库：同步私有网络照片、重建特征向量、查看当前库是否可用，为风险人员自动识别和任务下发提供支撑。</p>
+                <p class="font-body-md text-on-surface-variant mt-2 max-w-2xl text-sm">管理本地人脸识别底库：同步私有网络照片、重建特征向量、查看当前库是否可用，为风险人员自动识别和任务推送提供支撑。</p>
             </div>
             <div class="flex gap-2">
                 <button type="button" onclick="runFaceLibraryAction('global', 'sync')" class="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm hover:bg-surface-tint">同步人脸库</button>
@@ -61,7 +61,7 @@
                     <div>
                         <div class="text-xs text-on-surface-variant uppercase tracking-widest mb-1">人员名录</div>
                         <h2 class="font-headline-md text-headline-md text-on-surface">人员名录</h2>
-                        <p class="font-body-md text-on-surface-variant mt-2 text-sm">浏览已入库人员、核对人员编号和底库照片。点击卡片可查看人员详情，便于确认识别对象是否可用于后续任务下发。</p>
+                        <p class="font-body-md text-on-surface-variant mt-2 text-sm">浏览已入库人员、核对人员编号和底库照片。点击卡片可查看人员详情，便于确认识别对象是否可用于后续任务推送。</p>
                     </div>
                     <div>
                         <input id="personSearchInput" type="text" placeholder="搜索姓名或人员编号..." oninput="debouncePersonSearch()" class="bg-surface-container-low border-none border-b border-outline-variant focus:border-primary focus:ring-0 font-body-md rounded-none px-4 py-2 text-sm w-64" />
@@ -87,8 +87,8 @@
                 <ol class="list-decimal list-inside space-y-2 text-sm text-on-surface-variant">
                     <li>先同步人脸库，确认“库状态”为已就绪。</li>
                     <li>同步后如新增照片，建议再执行一次“重建特征”。</li>
-                    <li>若识别结果需要下发任务，请优先核对姓名、人员编号和底库照片。</li>
-                    <li>人脸库不可用时，任务下发自动流转也会受影响。</li>
+                    <li>若识别结果需要推送任务，请优先核对姓名、人员编号和底库照片。</li>
+                    <li>人脸库不可用时，任务推送自动流转也会受影响。</li>
                 </ol>
             </section>
 

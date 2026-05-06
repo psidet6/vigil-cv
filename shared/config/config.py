@@ -175,21 +175,21 @@ DISPATCH_ZJLX = os.getenv("DISPATCH_ZJLX", "111")
 DISPATCH_XFDW = os.getenv("DISPATCH_XFDW", "")
 DISPATCH_YWFZR = os.getenv("DISPATCH_YWFZR", "")
 DISPATCH_YWFZRLXDH = os.getenv("DISPATCH_YWFZRLXDH", "")
-DISPATCH_DEFAULT_TITLE = os.getenv("DISPATCH_DEFAULT_TITLE", "风险事件核查任务")
+DISPATCH_DEFAULT_TITLE = os.getenv("DISPATCH_DEFAULT_TITLE", "事件复核任务")
 DISPATCH_DEFAULT_CONTENT = os.getenv(
     "DISPATCH_DEFAULT_CONTENT",
-    "请核查该对象近期涉嫌风险事件并反馈处置情况。",
+    "请复核该对象近期涉及的事件，并反馈处理情况。",
 )
 DISPATCH_DEFAULT_NOTE = os.getenv(
     "DISPATCH_DEFAULT_NOTE",
-    "由 Vigil CV 自动识别并流转生成，请结合实际情况核查。",
+    "由 Vigil CV 自动识别并流转生成，请结合实际情况复核。",
 )
 DISPATCH_MOCK_MODE = (os.getenv("DISPATCH_MOCK_MODE", "true") or "true").strip().lower() in {"1", "true", "yes", "on"}
 DISPATCH_QUEUE_LIMIT = max(10, int(os.getenv("DISPATCH_QUEUE_LIMIT", "100")))
 DISPATCH_SMS_DEFAULT_MOBILE = os.getenv("DISPATCH_SMS_DEFAULT_MOBILE", "")
 DISPATCH_SMS_DEFAULT_TEMPLATE = os.getenv(
     "DISPATCH_SMS_DEFAULT_TEMPLATE",
-    "【示例业务团队】{xm}，系统生成了与“{illegal_type}”相关的核查事项，请于{deadline}前完成确认。联系单位：{zbpcsmc}，联系电话：{ywfzrlxdh}。",
+    "【示例业务团队】{xm}，系统生成了与“{illegal_type}”相关的复核事项，请于{deadline}前完成确认。联系单位：{zbpcsmc}，联系电话：{ywfzrlxdh}。",
 )
 DISPATCH_SMS_USERID = os.getenv("DISPATCH_SMS_USERID", "admin")
 DISPATCH_SMS_PASSWORD = os.getenv("DISPATCH_SMS_PASSWORD", "")
@@ -335,8 +335,8 @@ def _friendly_model_meta(model_name: str) -> dict[str, str]:
     lower = (model_name or "").strip().lower()
     friendly_map: dict[str, dict[str, str]] = {
         "special_event_detector.pt": {
-            "label": "专项风险事件识别",
-            "short_label": "专项风险事件识别",
+            "label": "专项事件识别",
+            "short_label": "专项事件识别",
             "description": "用于自定义专项场景的闭集目标快速筛查。",
         },
         "yolov8s-worldv2.pt": {

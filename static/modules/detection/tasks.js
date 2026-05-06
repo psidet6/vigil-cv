@@ -64,7 +64,7 @@
       if (UPLOAD_MODEL_MAP[modelKey] && UPLOAD_MODEL_MAP[modelKey].short_label) {
         return UPLOAD_MODEL_MAP[modelKey].short_label;
       }
-      if (modelKey === 'special') return '专项风险事件识别';
+      if (modelKey === 'special') return '专项事件识别';
       if (modelKey === 'general') return '通用人车要素识别';
       return modelKey || '识别模型';
     }
@@ -332,7 +332,7 @@
       Upload:   { title: '现场素材研判',   subtitle: '上传视频或图片，直接在系统内执行 AI 检测分析', btnLabel: '▶ 上传素材' },
       Face:     { title: '人脸识别与人员核验', subtitle: '识别结果人员与底库交叉比对，后台自动触发流转', btnLabel: '同步人脸库' },
       Train:    { title: '模型自训练',     subtitle: '将业务结果数据回流训练集，沉淀自定义识别能力', btnLabel: '创建训练任务' },
-      Dispatch: { title: '任务下发',       subtitle: '向现场管理单元推送通知，提高处置响应速度', btnLabel: '下发选中' },
+      Dispatch: { title: '任务推送',       subtitle: '向现场单位推送通知，提高处理响应速度', btnLabel: '推送选中' },
       Diagnostics: { title: '任务队列诊断', subtitle: '查看 SQLite 持久化队列、Worker 执行状态和陈旧任务风险', btnLabel: '刷新诊断' }
     };
 

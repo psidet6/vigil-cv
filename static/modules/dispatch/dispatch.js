@@ -90,7 +90,7 @@ function setDispatchPayloadEditor(value) {
 
 function parseDispatchPayloadEditor(queueIds) {
   var text = getDispatchPayloadEditorText();
-  if (!text || text.indexOf('请选择左侧待下发对象') === 0) {
+  if (!text || text.indexOf('请选择左侧待推送对象') === 0) {
     return null;
   }
   var parsed;
@@ -104,7 +104,7 @@ function parseDispatchPayloadEditor(queueIds) {
   }
   var payloadItems = Array.isArray(parsed) ? parsed : [parsed];
   if (queueIds && queueIds.length && payloadItems.length !== queueIds.length) {
-    throw new Error('Payload 条数必须与当前选中的待下发对象数量一致。');
+    throw new Error('Payload 条数必须与当前选中的待推送对象数量一致。');
   }
   return payloadItems;
 }
@@ -121,7 +121,7 @@ function renderDispatchAuth() {
   if (text) {
     var msg = auth.authenticated
       ? '认证账号：' + (auth.username || '--') + '，剩余有效期约 ' + (auth.expires_in || 0) + ' 秒。'
-      : '当前尚未认证任务平台，请先完成平台登录。';
+      : '当前尚未认证外部平台，请先完成平台登录。';
     if (auth.last_error) {
       msg += ' 最近错误：' + auth.last_error;
     }
@@ -134,9 +134,9 @@ function renderDispatchQueue() {
   var summary = document.getElementById('dispatchQueueSummary');
   if (!box || !summary) return;
 
-  summary.textContent = '待下发 ' + DISPATCH_STATE.items.length + ' 条，已选 ' + DISPATCH_STATE.selected.size + ' 条。';
+  summary.textContent = '待推送 ' + DISPATCH_STATE.items.length + ' 条，已选 ' + DISPATCH_STATE.selected.size + ' 条。';
   if (!DISPATCH_STATE.items.length) {
-    box.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">当前暂无待下发对象。完成人脸识别后，命中人员会自动流转到这里。</div>';
+    box.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">当前暂无待推送对象。完成人脸识别后，命中人员会自动流转到这里。</div>';
     return;
   }
 
@@ -174,7 +174,7 @@ function renderDispatchHistory() {
   var items = [];
   (DISPATCH_STATE.history.dispatch_records || []).forEach(function (item) {
     items.push({
-      kind: '任务下发',
+      kind: '任务推送',
       status: item.status || 'pending',
       title: item.queue_id || '',
       detail: (item.response_payload && (item.response_payload.message || item.response_payload.errorMessage)) || item.error_message || '',
@@ -192,7 +192,7 @@ function renderDispatchHistory() {
   });
   items.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
   if (!items.length) {
-    box.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">暂无下发记录。</div>';
+    box.innerHTML = '<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-sm text-slate-500">暂无推送记录。</div>';
     return;
   }
   box.innerHTML = items.slice(0, 20).map(function (item) {
@@ -219,7 +219,7 @@ function renderDispatchSmsLocally() {
   var box = document.getElementById('dispatchSmsPreviewText');
   if (!box) return;
   if (!item) {
-    box.textContent = '请选择左侧待下发对象后预览短信内容';
+    box.textContent = '请选择左侧待推送对象后预览短信内容';
     return;
   }
   var template = document.getElementById('dispatchSmsTemplate').value || '';
@@ -241,7 +241,7 @@ function fillDispatchForm(item) {
   var payload = item && item.recommended_payload ? item.recommended_payload : (item && item.draft_payload ? item.draft_payload : {});
   document.getElementById('dispatchSelectedHint').textContent = item
     ? ('当前对象：' + (item.person_name || '--') + ' / ' + (item.person_id_no || '--'))
-    : '请选择左侧待下发对象后，再编辑任务内容和下发草稿。';
+    : '请选择左侧待推送对象后，再编辑任务内容和推送草稿。';
   document.getElementById('dispatchTitle').value = payload.zlbt || '';
   document.getElementById('dispatchContent').value = payload.zlnr || '';
   document.getElementById('dispatchStartTime').value = payload.kssj || '';
@@ -317,7 +317,7 @@ function refreshDispatchRegionContext() {
     ids = [DISPATCH_STATE.currentId];
   }
   if (!ids.length) {
-    alert('请先选择待下发对象。');
+    alert('请先选择待推送对象。');
     return;
   }
   fetch('/dispatch/queue/refresh-region', {
@@ -328,14 +328,14 @@ function refreshDispatchRegionContext() {
     .then(function (resp) { return resp.json(); })
     .then(function (data) {
       if (!data.ok) {
-        alert(data.error || '重查属地失败。');
+        alert(data.error || '重查归属失败。');
         return;
       }
-      alert(data.message || '属地信息已更新。');
+      alert(data.message || '归属信息已更新。');
       refreshDispatchTab();
     })
     .catch(function () {
-      alert('重查属地请求失败。');
+      alert('重查归属请求失败。');
     });
 }
 
@@ -351,15 +351,15 @@ function authenticateDispatch(event) {
     .then(function (resp) { return resp.json(); })
     .then(function (data) {
       if (!data.ok) {
-        alert(data.error || '任务平台认证失败。');
+        alert(data.error || '外部平台认证失败。');
         return;
       }
       DISPATCH_STATE.auth = data.auth || null;
       renderDispatchAuth();
-      alert('任务平台认证成功。');
+      alert('外部平台认证成功。');
     })
     .catch(function () {
-      alert('任务平台认证请求失败。');
+      alert('外部平台认证请求失败。');
     });
   return false;
 }
@@ -370,7 +370,7 @@ function previewDispatchPayload() {
     ids = [DISPATCH_STATE.currentId];
   }
   if (!ids.length) {
-    alert('请先选择待下发对象。');
+    alert('请先选择待推送对象。');
     return;
   }
   var payloadItems = null;
@@ -409,7 +409,7 @@ function restoreDispatchMinimalPayload() {
     ids = [DISPATCH_STATE.currentId];
   }
   if (!ids.length) {
-    alert('请先选择待下发对象。');
+    alert('请先选择待推送对象。');
     return;
   }
   fetch('/dispatch/preview', {
@@ -450,7 +450,7 @@ function sendDispatchTasks() {
     ids = [DISPATCH_STATE.currentId];
   }
   if (!ids.length) {
-    alert('请先选择待下发对象。');
+    alert('请先选择待推送对象。');
     return;
   }
   var payloadItems = null;
@@ -473,21 +473,21 @@ function sendDispatchTasks() {
     .then(function (resp) { return resp.json(); })
     .then(function (data) {
       if (!data.ok) {
-        alert(data.error || '任务下发失败。');
+        alert(data.error || '任务推送失败。');
         return;
       }
-      alert((data.mock_mode ? '当前为模拟模式，' : '') + '任务下发已完成，共处理 ' + (data.count || 0) + ' 条。');
+      alert((data.mock_mode ? '当前为模拟模式，' : '') + '任务推送已完成，共处理 ' + (data.count || 0) + ' 条。');
       refreshDispatchTab();
     })
     .catch(function () {
-      alert('任务下发请求失败。');
+      alert('任务推送请求失败。');
     });
 }
 
 function previewDispatchSms() {
   var current = getCurrentDispatchItem();
   if (!current) {
-    alert('请先选择一个待下发对象。');
+    alert('请先选择一个待推送对象。');
     return;
   }
   var mobile = (document.getElementById('dispatchSmsMobile').value || '').trim();
@@ -516,7 +516,7 @@ function sendDispatchSms() {
     ids = [DISPATCH_STATE.currentId];
   }
   if (!ids.length) {
-    alert('请先选择待下发对象。');
+    alert('请先选择待推送对象。');
     return;
   }
   var mobile = (document.getElementById('dispatchSmsMobile').value || '').trim();

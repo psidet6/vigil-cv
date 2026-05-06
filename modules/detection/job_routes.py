@@ -334,7 +334,7 @@ def dashboard_stats():
         ).fetchone()
         today_matched = row["cnt"] if row else 0
 
-        # "待下发" = dispatch_queue entries pending for this user
+        # "待推送" = dispatch_queue entries pending for this user
         row2 = conn.execute(
             "SELECT COUNT(*) AS cnt FROM dispatch_queue WHERE dispatch_status='pending' AND (owner_key=? OR owner_ip=?)",
             (owner_key, owner_ip),

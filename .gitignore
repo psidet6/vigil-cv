@@ -26,6 +26,7 @@ runtime/
 data/
 datasets/
 train_runs/
+runs/
 upload_tmp/
 logs/
 *.log

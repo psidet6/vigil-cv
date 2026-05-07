@@ -52,10 +52,31 @@ ROOT = Path(__file__).resolve().parents[1]
 DATASETS_DIR = ROOT / "datasets"
 HELMET_DIR = DATASETS_DIR / "helmet"
 
+
+def _load_dotenv_if_available() -> None:
+    """Load ROOT/.env into os.environ if python-dotenv is installed.
+
+    Skipped silently when python-dotenv isn't present, so the script keeps
+    working on slim installs that only set environment variables directly.
+    """
+    try:
+        from dotenv import load_dotenv  # type: ignore
+    except ImportError:
+        return
+    env_path = ROOT / ".env"
+    if env_path.is_file():
+        load_dotenv(env_path, override=False)
+
+
+# Load .env before argparse defaults read os.environ.
+_load_dotenv_if_available()
+
 # Default Roboflow project — well-known, CC BY 4.0
+# Version 14 is the current published version on Roboflow Universe;
+# earlier versions (e.g. 2) have been retired and now download empty zips.
 DEFAULT_WORKSPACE = "joseph-nelson"
 DEFAULT_PROJECT = "hard-hat-workers"
-DEFAULT_VERSION = 2
+DEFAULT_VERSION = 14
 
 # Target simplified class layout
 TARGET_CLASSES = ["helmet", "no_helmet"]
@@ -178,7 +199,13 @@ def download_from_roboflow(
     _print(f"downloading {workspace}/{project} v{version} → {output_dir} ...")
     rf = Roboflow(api_key=api_key)
     project_obj = rf.workspace(workspace).project(project)
-    dataset = project_obj.version(version).download("yolov8", location=str(output_dir))
+    # overwrite=True is required: roboflow-python skips the download silently
+    # when `location` already exists, even if it's an empty directory.
+    dataset = project_obj.version(version).download(
+        "yolov8",
+        location=str(output_dir),
+        overwrite=True,
+    )
 
     actual_dir = Path(dataset.location).resolve()
     # Some Roboflow SDK versions create a sub-folder inside the requested

@@ -18,8 +18,15 @@ from shared.inference.infer_service import predict_image_boxes_batch
 AUTO_ANNOTATE_BATCH_SIZE = 8
 _TOKEN_RE = re.compile(r"[^a-z0-9]+")
 _ALIASES = {
-    "rider": ("multirider", "rider"),
-    "multirider": ("multirider", "rider"),
+    # Map common variants to the canonical helmet detection class names.
+    "hardhat": ("helmet", "helmet"),
+    "hard_hat": ("helmet", "helmet"),
+    "withhelmet": ("helmet", "helmet"),
+    "with_helmet": ("helmet", "helmet"),
+    "nohelmet": ("no_helmet", "no_helmet"),
+    "without_helmet": ("no_helmet", "no_helmet"),
+    "withouthelmet": ("no_helmet", "no_helmet"),
+    "head": ("no_helmet", "no_helmet"),
     "multipeople": ("multiperson", "person"),
 }
 

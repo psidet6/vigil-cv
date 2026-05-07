@@ -2,23 +2,26 @@
     const APP_URLS = APP_CONFIG.urls || {};
 
     const MODEL_UI = {
-      special: {
+      helmet: {
         label: '类别过滤',
-        placeholder: '0,1,2 或类别名',
-        help: '按索引或类别名过滤专项场景模型结果；留空表示不过滤。',
-        uploadDefaultConf: 0.80,
-        presets: []
+        placeholder: '0,1,2 或类别名（helmet / no_helmet / person）',
+        help: '按索引或类别名过滤安全帽检测结果；留空表示输出全部类别。',
+        uploadDefaultConf: 0.40,
+        presets: [
+          { label: '只看违规（no_helmet）', value: 'no_helmet' },
+          { label: '安全帽 + 未戴', value: 'helmet,no_helmet' }
+        ]
       },
       general: {
         label: '检测提示词',
-        placeholder: 'person, motorcycle, bicycle, car, bus, truck',
-        help: '英文逗号分隔。适合做人员、车辆、摩托车等通用要素的快速粗筛。',
+        placeholder: 'helmet, no_helmet, person, hard hat',
+        help: '英文逗号分隔。开放词汇模型，可用提示词检出任意目标。',
         uploadDefaultConf: 0.10,
         presets: [
-          { label: '交通场景', value: 'person,motorcycle,bicycle,car,bus,truck' },
-          { label: '摩托车', value: 'motorcycle' },
-          { label: '未戴头盔', value: 'motorcycle, person, helmet' },
-          { label: '人员', value: 'person' }
+          { label: '安全帽场景', value: 'helmet, no_helmet, person, hard hat' },
+          { label: '反光衣人员', value: 'person wearing reflective vest, worker in safety vest' },
+          { label: '通用人员', value: 'person' },
+          { label: '通用车辆', value: 'car, truck, bus, van' }
         ]
       }
     };
@@ -31,15 +34,15 @@
     );
     const UPLOAD_PROMPT_UI = {
       label: '检测提示词',
-      placeholder: 'person, motorcycle, bicycle, car, bus, truck',
-      help: '英文逗号分隔。适合对人员、车辆、摩托车等目标进行快速提示词筛查。',
+      placeholder: 'helmet, no_helmet, person, hard hat',
+      help: '英文逗号分隔。开放词汇模型，可用提示词检出任意目标。',
       uploadDefaultConf: 0.10,
-      defaultClasses: 'person,motorcycle,bicycle,car,bus,truck',
+      defaultClasses: 'helmet,no_helmet,person',
       presets: [
-        { label: '交通场景', value: 'person,motorcycle,bicycle,car,bus,truck' },
-        { label: '反光衣人员', value: 'person wearing reflective vest,worker in reflective vest,traffic police in reflective vest' },
-        { label: '摩托车', value: 'motorcycle' },
-        { label: '人员', value: 'person' }
+        { label: '安全帽场景', value: 'helmet, no_helmet, person, hard hat' },
+        { label: '反光衣人员', value: 'person wearing reflective vest, worker in safety vest' },
+        { label: '通用人员', value: 'person' },
+        { label: '通用车辆', value: 'car, truck, bus, van' }
       ]
     };
     const UPLOAD_FILTER_UI = {
@@ -64,8 +67,8 @@
       if (UPLOAD_MODEL_MAP[modelKey] && UPLOAD_MODEL_MAP[modelKey].short_label) {
         return UPLOAD_MODEL_MAP[modelKey].short_label;
       }
-      if (modelKey === 'special') return '专项事件识别';
-      if (modelKey === 'general') return '通用人车要素识别';
+      if (modelKey === 'helmet') return '工地安全帽检测';
+      if (modelKey === 'general') return '通用要素识别';
       return modelKey || '识别模型';
     }
 
@@ -332,7 +335,7 @@
       Upload:   { title: '现场素材研判',   subtitle: '上传视频或图片，直接在系统内执行 AI 检测分析', btnLabel: '▶ 上传素材' },
       Face:     { title: '人脸识别与人员核验', subtitle: '识别结果人员与底库交叉比对，后台自动触发流转', btnLabel: '同步人脸库' },
       Train:    { title: '模型自训练',     subtitle: '将业务结果数据回流训练集，沉淀自定义识别能力', btnLabel: '创建训练任务' },
-      Dispatch: { title: '任务推送',       subtitle: '向现场单位推送通知，提高处理响应速度', btnLabel: '推送选中' },
+      Dispatch: { title: '任务推送',       subtitle: '把安全帽违规对象推送给现场单位，加快处理响应', btnLabel: '推送选中' },
       Diagnostics: { title: '任务队列诊断', subtitle: '查看 SQLite 持久化队列、Worker 执行状态和陈旧任务风险', btnLabel: '刷新诊断' }
     };
 

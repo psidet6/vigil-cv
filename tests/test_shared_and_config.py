@@ -47,14 +47,14 @@ def test_shared_helpers_handle_common_inputs():
 
 def test_config_model_helpers_use_repo_models():
     assert Path(cfg.resolve_model_path("general")).name == "yolov8s-worldv2.pt"
-    assert Path(cfg.resolve_model_path("special")).name == "special_event_detector.pt"
+    assert Path(cfg.resolve_model_path("helmet")).name == "helmet-detector.pt"
     assert cfg.model_supports_text_prompt("general") is True
-    assert cfg.model_supports_text_prompt("special") is False
+    assert cfg.model_supports_text_prompt("helmet") is False
     assert cfg.get_upload_model_default() == "yolov8s-worldv2.pt"
 
     registry = cfg.list_upload_model_paths()
     assert "yolov8s-worldv2.pt" in registry
-    assert "special_event_detector.pt" in registry
+    assert "helmet-detector.pt" in registry
 
     options = cfg.get_upload_model_options()
     general_option = next(item for item in options if item["value"] == "yolov8s-worldv2.pt")
@@ -86,7 +86,7 @@ def test_upload_param_parsing_uses_prompt_defaults():
 def test_upload_param_parsing_clamps_numeric_values():
     conf, batch_size, imgsz, classes_raw, model_key, frame_interval = _parse_params(
         {
-            "model_key": "special_event_detector.pt",
+            "model_key": "helmet-detector.pt",
             "conf": "2",
             "batch_size": "0",
             "imgsz": "100",
@@ -95,7 +95,7 @@ def test_upload_param_parsing_clamps_numeric_values():
         }
     )
 
-    assert model_key == "special_event_detector.pt"
+    assert model_key == "helmet-detector.pt"
     assert conf == 1.0
     assert batch_size == 1
     assert imgsz == 320

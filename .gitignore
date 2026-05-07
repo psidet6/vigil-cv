@@ -33,6 +33,8 @@ logs/
 *.swp
 app.env
 app.env.*
+!ops/app.env.example
+!ops/app.env.*.example
 face_data/
 test/
 jobs.sqlite3

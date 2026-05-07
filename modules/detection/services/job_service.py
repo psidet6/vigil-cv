@@ -324,7 +324,7 @@ def _run_job(
 
         with JOBS_LOCK:
             current = JOBS[job_id]
-            current["classes"] = allowed_classes if runtime_job["model_key"] == "special" else prompt_classes
+            current["classes"] = allowed_classes if runtime_job["model_key"] == "helmet" else prompt_classes
         _persist_job_state(job_id)
 
         def should_cancel() -> bool:

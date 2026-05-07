@@ -260,7 +260,7 @@
       if (dom.prompts) {
         dom.prompts.disabled = !isPrompt;
         dom.prompts.placeholder = isPrompt
-          ? 'person, motorcycle, helmet'
+          ? 'helmet, no_helmet, person, hard hat'
           : '闭集模型一般不需要提示词';
         if (isPrompt && !dom.prompts.value.trim() && datasetClasses.length) {
           dom.prompts.value = datasetClasses.join(', ');

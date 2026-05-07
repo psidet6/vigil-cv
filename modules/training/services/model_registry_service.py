@@ -16,11 +16,11 @@ from shared.config.config import (
 DEPLOYMENT_SLOT_LABELS = {
     "upload_default": "本地上传默认模型",
     "general": "数据库巡检通用模型",
-    "special": "数据库巡检专项模型",
+    "helmet": "工地安全帽检测模型",
 }
 
 FOUNDATION_MODEL_NAMES = {"yolo26n.pt", "yolo26s.pt"}
-PRODUCTION_MODEL_NAMES = {"special_event_detector.pt", "yolov8s-worldv2.pt"}
+PRODUCTION_MODEL_NAMES = {"helmet-detector.pt", "yolov8s-worldv2.pt"}
 
 MODEL_LIFECYCLE_LABELS = {
     "active": "启用中",
@@ -111,7 +111,7 @@ def _default_usages_for_model(model_name: str, category: str) -> list[str]:
         usages.extend(["training_base", "auto_label"])
     if lower == "yolov8s-worldv2.pt":
         usages.extend(["auto_label", "general_inference"])
-    if lower == "special_event_detector.pt":
+    if lower == "helmet-detector.pt":
         usages.append("specialized_inference")
     seen = set()
     result = []

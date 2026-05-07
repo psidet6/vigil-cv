@@ -86,7 +86,7 @@ COPY templates ./templates
 COPY static ./static
 COPY model ./model
 
-RUN test -f /app/model/special_event_detector.pt || (echo "Missing model/special_event_detector.pt" >&2; exit 1) \
+RUN test -f /app/model/helmet-detector.pt || (echo "Missing model/helmet-detector.pt" >&2; exit 1) \
     && test -f /app/model/yolov8s-worldv2.pt || (echo "Missing model/yolov8s-worldv2.pt" >&2; exit 1) \
     && test -f /app/model/det_10g.onnx || (echo "Missing model/det_10g.onnx" >&2; exit 1) \
     && test -f /app/model/w600k_r50.onnx || (echo "Missing model/w600k_r50.onnx" >&2; exit 1) \

@@ -40,8 +40,8 @@ def _guess_illegal_type(job: dict | None) -> str:
         return "事件待确认"
     model_key = str(job.get("model_key") or "").strip().lower()
     source_name = str(job.get("source_name") or "").strip()
-    if model_key == "special":
-        return "专项事件"
+    if model_key == "helmet":
+        return "安全帽佩戴异常"
     if source_name:
         return source_name
     return "事件待确认"

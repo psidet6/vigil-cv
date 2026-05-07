@@ -1,0 +1,19 @@
+# Optional training and demo-content dependencies.
+# Install when you want to prepare datasets, train detectors locally, or
+# generate the visualization artifacts under demo/:
+#   pip install -r requirements-train.txt
+#
+# The web runtime in requirements.txt does NOT need these packages.
+
+-r requirements.txt
+
+# Roboflow Universe dataset downloader, used by scripts/prepare_helmet_dataset.py.
+roboflow>=1.1,<2
+
+# PyYAML is a transitive dependency of ultralytics, but pin here so the
+# dataset preparation script keeps working even on slim installs.
+PyYAML>=6,<7
+
+# Plotting for demo/show_training_results.py (training-curve visualization
+# tuned for 1080p video frames).
+matplotlib>=3.8,<4

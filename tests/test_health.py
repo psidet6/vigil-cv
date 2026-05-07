@@ -35,7 +35,7 @@ def test_health_report_is_ok_when_dependencies_exist(monkeypatch, tmp_path):
     _prepare_task_queue_db(db_path)
 
     model_paths = {}
-    for name in ("general.pt", "special.pt", "mobileclip.ts", "mobileclip2.ts", "clip.pt", "det.onnx", "rec.onnx"):
+    for name in ("general.pt", "helmet.pt", "mobileclip.ts", "mobileclip2.ts", "clip.pt", "det.onnx", "rec.onnx"):
         path = tmp_path / name
         path.write_bytes(b"placeholder")
         model_paths[name] = str(path)
@@ -45,7 +45,7 @@ def test_health_report_is_ok_when_dependencies_exist(monkeypatch, tmp_path):
     monkeypatch.setattr(
         health,
         "MODEL_REGISTRY",
-        {"special": model_paths["special.pt"], "general": model_paths["general.pt"]},
+        {"helmet": model_paths["helmet.pt"], "general": model_paths["general.pt"]},
     )
     monkeypatch.setattr(health, "MOBILECLIP_TS_PATH", model_paths["mobileclip.ts"])
     monkeypatch.setattr(health, "MOBILECLIP2_TS_PATH", model_paths["mobileclip2.ts"])
@@ -90,7 +90,7 @@ def test_health_report_flags_missing_models_and_stale_tasks(monkeypatch, tmp_pat
     monkeypatch.setattr(
         health,
         "MODEL_REGISTRY",
-        {"special": str(tmp_path / "missing-special.pt"), "general": str(existing_model)},
+        {"helmet": str(tmp_path / "missing-helmet.pt"), "general": str(existing_model)},
     )
     monkeypatch.setattr(health, "MOBILECLIP_TS_PATH", str(tmp_path / "missing-mobileclip.ts"))
     monkeypatch.setattr(health, "MOBILECLIP2_TS_PATH", str(tmp_path / "missing-mobileclip2.ts"))

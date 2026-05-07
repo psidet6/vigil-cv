@@ -33,7 +33,7 @@ def _prepare_environment() -> None:
         directory.mkdir(parents=True, exist_ok=True)
 
     for filename in (
-        "special_event_detector.pt",
+        "helmet-detector.pt",
         "yolov8s-worldv2.pt",
         "yolo26n.pt",
         "yolo26s.pt",
@@ -66,7 +66,7 @@ def _prepare_environment() -> None:
             "FACE_DATA_DIR": str(TEST_ROOT / "face_data"),
             "SQLITE_DB_PATH": str(TEST_ROOT / "jobs.sqlite3"),
             "POSTGRES_FACE_QUERY_PATH": str(face_sql_query_path),
-            "MODEL_PATH": str(MODEL_DIR / "special_event_detector.pt"),
+            "MODEL_PATH": str(MODEL_DIR / "helmet-detector.pt"),
             "MODEL_PATH_GENERAL": str(MODEL_DIR / "yolov8s-worldv2.pt"),
             "MOBILECLIP_TS_PATH": str(MODEL_DIR / "mobileclip_blt.ts"),
             "MOBILECLIP2_TS_PATH": str(MODEL_DIR / "mobileclip2_b.ts"),

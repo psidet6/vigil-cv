@@ -8,7 +8,7 @@ BASE_DIR = os.path.abspath(os.path.join(CONFIG_DIR, "..", ".."))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 DEPLOYMENT_SLOTS_PATH = os.path.join(MODEL_DIR, "deployment_slots.json")
 UPLOAD_MODEL_EXTS = {".pt"}
-PROMPT_MODEL_DEFAULT_CLASSES = "person,motorcycle,bicycle,car,bus,truck"
+PROMPT_MODEL_DEFAULT_CLASSES = "helmet,no_helmet,person"
 PROMPT_MODEL_DEFAULT_CONF = 0.10
 
 
@@ -113,7 +113,7 @@ def _resolve_model_path_candidates(default_filenames: tuple[str, ...], *env_name
 
 
 MODEL_REGISTRY = {
-    "special": _resolve_model_path("special_event_detector.pt", "MODEL_PATH_SPECIAL", "MODEL_PATH"),
+    "helmet": _resolve_model_path("helmet-detector.pt", "MODEL_PATH_HELMET", "MODEL_PATH"),
     "general": _resolve_model_path_candidates(("yolov8s-worldv2.pt", "yolo26s.pt", "yolo26n.pt"), "MODEL_PATH_GENERAL"),
 }
 MOBILECLIP_TS_PATH = _resolve_model_path("mobileclip_blt.ts", "MOBILECLIP_TS_PATH")
@@ -123,9 +123,9 @@ MODEL_ASSET_FILENAMES = {
     os.path.basename(CLIP_VIT_B32_PATH).lower(),
 }
 
-MODEL_DEFAULT = (os.getenv("MODEL_DEFAULT", "general") or "general").strip()
+MODEL_DEFAULT = (os.getenv("MODEL_DEFAULT", "helmet") or "helmet").strip()
 if MODEL_DEFAULT not in MODEL_REGISTRY:
-    MODEL_DEFAULT = "general"
+    MODEL_DEFAULT = "helmet"
 
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", "8"))
 CONF_THRESH = float(os.getenv("CONF_THRESH", "0.8"))
@@ -257,7 +257,7 @@ def list_upload_model_paths() -> dict[str, str]:
         registry.setdefault(model_name, os.path.abspath(path))
 
     _register(MODEL_REGISTRY.get("general"))
-    _register(MODEL_REGISTRY.get("special"))
+    _register(MODEL_REGISTRY.get("helmet"))
 
     if os.path.isdir(MODEL_DIR):
         for entry in sorted(os.listdir(MODEL_DIR), key=str.lower):
@@ -302,7 +302,7 @@ def get_upload_model_default() -> str:
         "yolov8s-worldv2.pt",
         "yolo26s.pt",
         "yolo26n.pt",
-        os.path.basename(MODEL_REGISTRY.get("special", "")),
+        os.path.basename(MODEL_REGISTRY.get("helmet", "")),
     ]
     name_lookup = {name.lower(): name for name in registry}
     for preferred in preferred_names:
@@ -320,8 +320,8 @@ def _upload_model_description(model_name: str) -> str:
     if meta and meta.get("description"):
         return str(meta["description"])
     lower = model_name.lower()
-    if lower == "special_event_detector.pt":
-        return "Private closed-set detector for project-specific event filtering."
+    if lower == "helmet-detector.pt":
+        return "YOLOv8s closed-set detector for construction-site helmet compliance (helmet / no_helmet / person)."
     if "yolo" in lower and "world" in lower:
         return "YOLO-World open-vocabulary model with English prompts."
     if lower == "yolo26n.pt":
@@ -334,15 +334,15 @@ def _upload_model_description(model_name: str) -> str:
 def _friendly_model_meta(model_name: str) -> dict[str, str]:
     lower = (model_name or "").strip().lower()
     friendly_map: dict[str, dict[str, str]] = {
-        "special_event_detector.pt": {
-            "label": "专项事件识别",
-            "short_label": "专项事件识别",
-            "description": "用于自定义专项场景的闭集目标快速筛查。",
+        "helmet-detector.pt": {
+            "label": "工地安全帽检测",
+            "short_label": "安全帽检测",
+            "description": "用于工地/工厂场景下的安全帽佩戴合规检测（helmet / no_helmet / person）。",
         },
         "yolov8s-worldv2.pt": {
-            "label": "通用人车要素识别",
+            "label": "通用要素识别",
             "short_label": "通用要素识别",
-            "description": "适合按提示词检出人员、车辆、摩托车等通用目标。",
+            "description": "开放词汇模型，按英文提示词检出任意目标，适合做通用筛查或快速预标注。",
         },
         "yolo26n.pt": {
             "label": "快速版训练底模",
@@ -374,7 +374,7 @@ def get_upload_model_options() -> list[dict[str, object]]:
         "yolov8s-worldv2.pt": 1,
         "yolo26s.pt": 2,
         "yolo26n.pt": 3,
-        os.path.basename(MODEL_REGISTRY.get("special", "")).lower(): 10,
+        os.path.basename(MODEL_REGISTRY.get("helmet", "")).lower(): 10,
     }
 
     def _sort_key(model_name: str) -> tuple[int, str]:

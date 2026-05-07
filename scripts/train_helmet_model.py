@@ -63,6 +63,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--imgsz", type=int, default=640, help="Image size (default: 640).")
     p.add_argument("--batch", type=int, default=16, help="Batch size (default: 16).")
     p.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help=(
+            "DataLoader worker processes (default: 4). "
+            "Lower this to 2 on systems with 16GB RAM or less, where "
+            "ultralytics' default of 8 can exhaust system memory after "
+            "several epochs (Mosaic augmentation creates large transient arrays)."
+        ),
+    )
+    p.add_argument(
         "--device",
         default="0",
         help="Training device. Use '0' (or '0,1') for GPU(s), or 'cpu' for CPU.",
@@ -170,6 +181,7 @@ def main() -> None:
     _print(f"epochs:     {args.epochs}")
     _print(f"imgsz:      {args.imgsz}")
     _print(f"batch:      {args.batch}")
+    _print(f"workers:    {args.workers}")
     _print(f"device:     {args.device}")
     _print(f"output:     {Path(args.project) / args.name}")
 
@@ -179,6 +191,7 @@ def main() -> None:
         epochs=args.epochs,
         imgsz=args.imgsz,
         batch=args.batch,
+        workers=args.workers,
         device=args.device,
         project=str(Path(args.project).resolve()),
         name=args.name,
